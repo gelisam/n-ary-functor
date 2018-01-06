@@ -11,4 +11,4 @@
     > nmap <#> (+1) <#> (+2) <#> (+3) <#> (+4) $ (0, 0, 0, 0)
     (1,2,3,4)
 
-For more details, see the documentation and the [blog post](http://gelisam.blogspot.ca/2017/12/n-ary-functors.html).
+For more details, see the [documentation](https://hackage.haskell.org/package/n-ary-functor-0.1.0.0/docs/NAryFunctor.html) and the [blog post](http://gelisam.blogspot.ca/2017/12/n-ary-functors.html).
