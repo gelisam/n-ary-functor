@@ -1,10 +1,66 @@
 {-# LANGUAGE RankNTypes, TypeFamilies, TypeFamilyDependencies, TypeInType #-}
-module NAryFunctor where
+module NAryFunctor
+  ( NFunctor(..)
 
-import Data.Kind
+  -- * Internals
+  , NMap1(..), NMap
+  ) where
+
+import Data.Bifunctor
 import Data.Functor.Identity
+import Data.Kind (Type)
 
 
+-- |
+-- A generalization of 'Functor', 'Bifunctor', 'Trifunctor', etc.
+--
+-- Example usage:
+--
+-- >>> nmap <#> (+1) $ Identity (0::Int)
+-- Identity 1
+--
+-- >>> nmap <#> (+1) <#> (+2) $ (0::Int, 0::Int)
+-- (1,2)
+--
+-- >>> nmap <#> (+1) <#> (+2) <#> (+3) $ (0::Int, 0::Int, 0::Int)
+-- (1,2,3)
+--
+-- Laws:
+--
+-- > nmap <#> id <#> ... <#> id = id
+-- > (nmap <#> f1 <#> ... <#> fN) . (nmap <#> g1 <#> ... <#> gN) = nmap <#> (f1 . g1) <#> ... <#> (fN . gN)
+--
+-- Example instance:
+--
+-- > instance NFunctor (,,) where
+-- >   nmap = NMap1 $ \f1
+-- >       -> NMap1 $ \f2
+-- >       -> NMap1 $ \f3
+-- >       -> \(x1,x2,x3)
+-- >       -> (f1 x1, f2 x2, f3 x3)
+class NFunctor (f :: k) where
+  nmap :: NMap k f f
+
+
+-- |
+-- Types like 'Either' which have both a 'Functor' and a 'Bifunctor' instance
+-- can have more than one 'NFunctor' instance. Those instances all define the
+-- same method, 'nmap', but they return a value of a different type, which is
+-- how the correct 'NFunctor' instance is picked:
+--
+-- > nmap :: NMap1 Type (Either a) (Either a)    -- Functor
+-- > nmap :: NMap1 (Type -> Type) Either Either  -- Bifunctor
+--
+-- This 'NMap1' is unwrapped by using '<#>' to pass in the next input function.
+-- In the case of @NMap1 (Type -> Type)@, the result after passing this input
+-- function is another 'NMap1', which needs to be unwrapped using a second
+-- '<#>'. The end result is that the 'Functor' behaviour is obtained by using a
+-- single '<#>', and the 'Bifunctor' behaviour is obtained by using two.
+--
+-- >>> nmap <#> (+1) $ Right (0::Int)
+-- Right 1
+-- >>> nmap <#> (+1) <#> (+2) $ Left (0::Int)
+-- Left 1
 newtype NMap1 k (f :: Type -> k) (f' :: Type -> k) = NMap1
   { (<#>) :: forall a b. (a -> b) -> NMap k (f a) (f' b)
   }
@@ -13,37 +69,43 @@ type family NMap k = (r :: k -> k -> Type) | r -> k where
   NMap Type        = (->)
   NMap (Type -> k) = NMap1 k
 
-class NFunctor (f :: k) where
-  nmap :: NMap k f f
+
+-- | For kind @* -> *@ ('Functor'), 'nmap' must be @NMap1 fmap@.
+--
+-- >>> nmap <#> (+1) $ Right (0::Int)
+-- Right 1
+instance NFunctor (Either a) where
+  nmap = NMap1 fmap
+
+-- | For kind @* -> * -> *@ ('Bifunctor'), 'nmap' must be @NMap1 $ \f1 -> NMap1 $ \f2 -> bimap f1 f2@.
+--
+-- >>> nmap <#> (+1) <#> (+2) $ Left (0::Int)
+-- Left 1
+instance NFunctor Either where
+  nmap = NMap1 $ \f1 -> NMap1 $ \f2 -> bimap f1 f2
 
 
 -- |
--- >>> nmap (42 :: Int)
--- 42
-instance NFunctor Int where
+-- For kind @*@, 'nmap' must be the identity function. If 'Bifunctor' and
+-- 'Functor' correspond to binary and unary functors, this corresponds to a
+-- "nullary" functor.
+--
+-- >>> nmap ()
+-- ()
+instance NFunctor () where
   nmap = id
 
--- |
--- >>> nmap <#> (+1) $ (Identity 0 :: Identity Int)
--- Identity 1
 instance NFunctor Identity where
   nmap = NMap1 $ \f1
       -> \(Identity x1)
       -> Identity (f1 x1)
 
-
--- |
--- >>> nmap <#> (+1) <#> (+2) $ (0::Int, 0::Int)
--- (1,2)
 instance NFunctor (,) where
   nmap = NMap1 $ \f1
       -> NMap1 $ \f2
       -> \(x1,x2)
       -> (f1 x1, f2 x2)
 
--- |
--- >>> nmap <#> (+1) <#> (+2) <#> (+3) $ (0::Int, 0::Int, 0::Int)
--- (1,2,3)
 instance NFunctor (,,) where
   nmap = NMap1 $ \f1
       -> NMap1 $ \f2
@@ -51,9 +113,6 @@ instance NFunctor (,,) where
       -> \(x1,x2,x3)
       -> (f1 x1, f2 x2, f3 x3)
 
--- |
--- >>> nmap <#> (+1) <#> (+2) <#> (+3) <#> (+4) $ (0::Int, 0::Int, 0::Int, 0::Int)
--- (1,2,3,4)
 instance NFunctor (,,,) where
   nmap = NMap1 $ \f1
       -> NMap1 $ \f2
@@ -62,9 +121,6 @@ instance NFunctor (,,,) where
       -> \(x1,x2,x3,x4)
       -> (f1 x1, f2 x2, f3 x3, f4 x4)
 
--- |
--- >>> nmap <#> (+1) <#> (+2) <#> (+3) <#> (+4) <#> (+5) $ (0::Int, 0::Int, 0::Int, 0::Int, 0::Int)
--- (1,2,3,4,5)
 instance NFunctor (,,,,) where
   nmap = NMap1 $ \f1
       -> NMap1 $ \f2
@@ -74,9 +130,6 @@ instance NFunctor (,,,,) where
       -> \(x1,x2,x3,x4,x5)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5)
 
--- |
--- >>> nmap <#> (+1) <#> (+2) <#> (+3) <#> (+4) <#> (+5) <#> (+6) $ (0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int)
--- (1,2,3,4,5,6)
 instance NFunctor (,,,,,) where
   nmap = NMap1 $ \f1
       -> NMap1 $ \f2
@@ -87,9 +140,6 @@ instance NFunctor (,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6)
 
--- |
--- >>> nmap <#> (+1) <#> (+2) <#> (+3) <#> (+4) <#> (+5) <#> (+6) <#> (+7) $ (0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int)
--- (1,2,3,4,5,6,7)
 instance NFunctor (,,,,,,) where
   nmap = NMap1 $ \f1
       -> NMap1 $ \f2
@@ -101,9 +151,6 @@ instance NFunctor (,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7)
 
--- |
--- >>> nmap <#> (+1) <#> (+2) <#> (+3) <#> (+4) <#> (+5) <#> (+6) <#> (+7) <#> (+8) $ (0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int)
--- (1,2,3,4,5,6,7,8)
 instance NFunctor (,,,,,,,) where
   nmap = NMap1 $ \f1
       -> NMap1 $ \f2
@@ -116,9 +163,6 @@ instance NFunctor (,,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7,x8)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8)
 
--- |
--- >>> nmap <#> (+1) <#> (+2) <#> (+3) <#> (+4) <#> (+5) <#> (+6) <#> (+7) <#> (+8) <#> (+9) $ (0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int)
--- (1,2,3,4,5,6,7,8,9)
 instance NFunctor (,,,,,,,,) where
   nmap = NMap1 $ \f1
       -> NMap1 $ \f2
@@ -132,9 +176,6 @@ instance NFunctor (,,,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9)
 
--- |
--- >>> nmap <#> (+1) <#> (+2) <#> (+3) <#> (+4) <#> (+5) <#> (+6) <#> (+7) <#> (+8) <#> (+9) <#> (+10) $ (0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int)
--- (1,2,3,4,5,6,7,8,9,10)
 instance NFunctor (,,,,,,,,,) where
   nmap = NMap1 $ \f1
       -> NMap1 $ \f2
@@ -149,9 +190,6 @@ instance NFunctor (,,,,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10)
 
--- |
--- >>> nmap <#> (+1) <#> (+2) <#> (+3) <#> (+4) <#> (+5) <#> (+6) <#> (+7) <#> (+8) <#> (+9) <#> (+10) <#> (+11) $ (0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int)
--- (1,2,3,4,5,6,7,8,9,10,11)
 instance NFunctor (,,,,,,,,,,) where
   nmap = NMap1 $ \f1
       -> NMap1 $ \f2
@@ -167,9 +205,6 @@ instance NFunctor (,,,,,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10, f11 x11)
 
--- |
--- >>> nmap <#> (+1) <#> (+2) <#> (+3) <#> (+4) <#> (+5) <#> (+6) <#> (+7) <#> (+8) <#> (+9) <#> (+10) <#> (+11) <#> (+12) $ (0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int)
--- (1,2,3,4,5,6,7,8,9,10,11,12)
 instance NFunctor (,,,,,,,,,,,) where
   nmap = NMap1 $ \f1
       -> NMap1 $ \f2
@@ -186,9 +221,6 @@ instance NFunctor (,,,,,,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10, f11 x11, f12 x12)
 
--- |
--- >>> nmap <#> (+1) <#> (+2) <#> (+3) <#> (+4) <#> (+5) <#> (+6) <#> (+7) <#> (+8) <#> (+9) <#> (+10) <#> (+11) <#> (+12) <#> (+13) $ (0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int)
--- (1,2,3,4,5,6,7,8,9,10,11,12,13)
 instance NFunctor (,,,,,,,,,,,,) where
   nmap = NMap1 $ \f1
       -> NMap1 $ \f2
@@ -206,9 +238,6 @@ instance NFunctor (,,,,,,,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10, f11 x11, f12 x12, f13 x13)
 
--- |
--- >>> nmap <#> (+1) <#> (+2) <#> (+3) <#> (+4) <#> (+5) <#> (+6) <#> (+7) <#> (+8) <#> (+9) <#> (+10) <#> (+11) <#> (+12) <#> (+13) <#> (+14) $ (0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int)
--- (1,2,3,4,5,6,7,8,9,10,11,12,13,14)
 instance NFunctor (,,,,,,,,,,,,,) where
   nmap = NMap1 $ \f1
       -> NMap1 $ \f2
@@ -227,9 +256,6 @@ instance NFunctor (,,,,,,,,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10, f11 x11, f12 x12, f13 x13, f14 x14)
 
--- |
--- >>> nmap <#> (+1) <#> (+2) <#> (+3) <#> (+4) <#> (+5) <#> (+6) <#> (+7) <#> (+8) <#> (+9) <#> (+10) <#> (+11) <#> (+12) <#> (+13) <#> (+14) <#> (+15) $ (0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int, 0::Int)
--- (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15)
 instance NFunctor (,,,,,,,,,,,,,,) where
   nmap = NMap1 $ \f1
       -> NMap1 $ \f2
