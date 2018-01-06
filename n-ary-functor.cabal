@@ -1,6 +1,7 @@
 name:                n-ary-functor
 version:             0.1.0.0
-synopsis:            A single typeclass for Functor, Bifunctor, Trifunctor, etc.
+synopsis:            An n-ary version of Functor
+description:         A single typeclass for Functor, Bifunctor, Trifunctor, etc.
 homepage:            https://github.com/gelisam/n-ary-functor
 license:             PublicDomain
 author:              Samuel Gélineau
