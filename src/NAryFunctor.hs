@@ -42,6 +42,8 @@ class NFunctor (f :: k) where
   nmap :: NMap k f f
 
 
+-- Internals
+
 -- |
 -- Types like 'Either' which have both a 'Functor' and a 'Bifunctor' instance
 -- can have more than one 'NFunctor' instance. Those instances all define the
@@ -69,6 +71,8 @@ type family NMap k = (r :: k -> k -> Type) | r -> k where
   NMap Type        = (->)
   NMap (Type -> k) = NMap1 k
 
+
+-- Instances
 
 -- | For kind @* -> *@ ('Functor'), 'nmap' must be @NMap1 fmap@.
 --
