@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, PolyKinds, RankNTypes, TypeFamilies, UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, PolyKinds, RankNTypes, TypeFamilies, UndecidableInstances, UnicodeSyntax #-}
 module NAryFunctor.Variance where
 
 import Control.Monad.Trans.State
@@ -25,7 +25,7 @@ class Invariant v => Contravariant v where
   (>#<) :: forall cc f f' a a'. v cc f  f' -> (a' -> a) -> cc (f a) (f' a')
 
 class (Covariant v, Contravariant v) => Phantomvariant v where
-  (!#!) :: forall cc f f' a a'. v cc f f' -> () -> cc (f a) (f' a')
+  (👻#👻) :: forall cc f f' a a'. v cc f f' -> () -> cc (f a) (f' a')
 
 
 data Nonvariant1 a cc f f' = Nonvariant1
@@ -88,7 +88,7 @@ instance Contravariant Phantomvariant1 where
   Phantomvariant1 body >#< _ = body ()
 
 instance Phantomvariant Phantomvariant1 where
-  Phantomvariant1 body !#! () = body ()
+  Phantomvariant1 body 👻#👻 () = body ()
 
 
 -- Instances
@@ -107,7 +107,7 @@ instance v ~ Contravariant1 (Covariant1 (->)) => VFunctor v (->) where
       -> f2 . g . f1'
 
 -- |
--- >>> vmap <#> length !#! () $ Const "foo"
+-- >>> vmap <#> length 👻#👻 () $ Const "foo"
 -- Const 3
 instance v ~ Covariant1 (Phantomvariant1 (->)) => VFunctor v Const where
   vmap = Covariant1 $ \f1
