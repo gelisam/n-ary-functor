@@ -24,7 +24,7 @@ class Invariant v => Covariant v where
 class Invariant v => Contravariant v where
   (>#<) :: forall cc f f' a a'. v cc f  f' -> (a' -> a) -> cc (f a) (f' a')
 
-class (Covariant v, Contravariant v) => Phantomvariant v where
+class Phantomvariant v where
   (👻#👻) :: forall cc f f' a a'. v cc f f' -> () -> cc (f a) (f' a')
 
 
