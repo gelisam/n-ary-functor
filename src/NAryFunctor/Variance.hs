@@ -5,11 +5,11 @@ import Control.Arrow
 import Control.Monad.Trans.State
 import Data.Bifunctor
 import Data.Functor.Const
+import Data.Functor.Identity
 
 -- $setup
 -- >>> import Control.Monad
 -- >>> import Control.Monad.IO.Class
--- >>> import Data.Functor.Identity
 
 
 class VFunctor (f :: k) where
@@ -69,14 +69,21 @@ newtype Invariant1Map1 cc f f' = Invariant1Map1
 -- Instances
 
 -- |
--- >>> vmap <#> length <#> length $ ("abc", "abcde")
--- (3,5)
-instance VFunctor (,) where
-  type VMap (,) = CovariantMap1 (CovariantMap1 (->))
+-- >>> vmap <#> (+1) $ Right (0::Int)
+-- Right 1
+instance VFunctor (Either a) where
+  type VMap (Either a) = CovariantMap1 (->)
+  vmap = CovariantMap1 $ \f1
+      -> fmap f1
+
+-- |
+-- >>> vmap <#> (+1) <#> (+2) $ Left (0::Int)
+-- Left 1
+instance VFunctor Either where
+  type VMap Either = CovariantMap1 (CovariantMap1 (->))
   vmap = CovariantMap1 $ \f1
       -> CovariantMap1 $ \f2
-      -> \(x1,x2)
-      -> (f1 x1, f2 x2)
+      -> bimap f1 f2
 
 -- |
 -- >>> :{
@@ -115,3 +122,221 @@ instance VFunctor StateT where
       -> \body
       -> StateT $ \s'
       -> fmap (f3 *** f1) $ runNF f2 $ runStateT body $ f1' s'
+
+
+-- |
+-- For kind @*@, 'vmap' must be the identity function. If 'Bifunctor' and
+-- 'Functor' correspond to binary and unary functors, this corresponds to a
+-- "nullary" functor.
+--
+-- >>> vmap ()
+-- ()
+instance VFunctor () where
+  type VMap () = (->)
+  vmap = id
+
+-- |
+-- >>> vmap <#> length $ Identity "abc"
+-- Identity 3
+instance VFunctor Identity where
+  type VMap Identity = CovariantMap1 (->)
+  vmap = CovariantMap1 $ \f1
+      -> \(Identity x1)
+      -> Identity (f1 x1)
+
+-- |
+-- >>> vmap <#> length <#> length $ ("abc", "abcde")
+-- (3,5)
+instance VFunctor (,) where
+  type VMap (,) = CovariantMap1 (CovariantMap1 (->))
+  vmap = CovariantMap1 $ \f1
+      -> CovariantMap1 $ \f2
+      -> \(x1,x2)
+      -> (f1 x1, f2 x2)
+
+-- |
+-- >>> vmap <#> length <#> length <#> length $ ("abc", "abcde", "abcdefg")
+-- (3,5,7)
+instance VFunctor (,,) where
+  type VMap (,,) = CovariantMap1 (CovariantMap1 (CovariantMap1 (->)))
+  vmap = CovariantMap1 $ \f1
+      -> CovariantMap1 $ \f2
+      -> CovariantMap1 $ \f3
+      -> \(x1,x2,x3)
+      -> (f1 x1, f2 x2, f3 x3)
+
+instance VFunctor (,,,) where
+  type VMap (,,,) = CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (->))))
+  vmap = CovariantMap1 $ \f1
+      -> CovariantMap1 $ \f2
+      -> CovariantMap1 $ \f3
+      -> CovariantMap1 $ \f4
+      -> \(x1,x2,x3,x4)
+      -> (f1 x1, f2 x2, f3 x3, f4 x4)
+
+instance VFunctor (,,,,) where
+  type VMap (,,,,) = CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (->)))))
+  vmap = CovariantMap1 $ \f1
+      -> CovariantMap1 $ \f2
+      -> CovariantMap1 $ \f3
+      -> CovariantMap1 $ \f4
+      -> CovariantMap1 $ \f5
+      -> \(x1,x2,x3,x4,x5)
+      -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5)
+
+instance VFunctor (,,,,,) where
+  type VMap (,,,,,) = CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (->))))))
+  vmap = CovariantMap1 $ \f1
+      -> CovariantMap1 $ \f2
+      -> CovariantMap1 $ \f3
+      -> CovariantMap1 $ \f4
+      -> CovariantMap1 $ \f5
+      -> CovariantMap1 $ \f6
+      -> \(x1,x2,x3,x4,x5,x6)
+      -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6)
+
+instance VFunctor (,,,,,,) where
+  type VMap (,,,,,,) = CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (->)))))))
+  vmap = CovariantMap1 $ \f1
+      -> CovariantMap1 $ \f2
+      -> CovariantMap1 $ \f3
+      -> CovariantMap1 $ \f4
+      -> CovariantMap1 $ \f5
+      -> CovariantMap1 $ \f6
+      -> CovariantMap1 $ \f7
+      -> \(x1,x2,x3,x4,x5,x6,x7)
+      -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7)
+
+instance VFunctor (,,,,,,,) where
+  type VMap (,,,,,,,) = CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (->))))))))
+  vmap = CovariantMap1 $ \f1
+      -> CovariantMap1 $ \f2
+      -> CovariantMap1 $ \f3
+      -> CovariantMap1 $ \f4
+      -> CovariantMap1 $ \f5
+      -> CovariantMap1 $ \f6
+      -> CovariantMap1 $ \f7
+      -> CovariantMap1 $ \f8
+      -> \(x1,x2,x3,x4,x5,x6,x7,x8)
+      -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8)
+
+instance VFunctor (,,,,,,,,) where
+  type VMap (,,,,,,,,) = CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (->)))))))))
+  vmap = CovariantMap1 $ \f1
+      -> CovariantMap1 $ \f2
+      -> CovariantMap1 $ \f3
+      -> CovariantMap1 $ \f4
+      -> CovariantMap1 $ \f5
+      -> CovariantMap1 $ \f6
+      -> CovariantMap1 $ \f7
+      -> CovariantMap1 $ \f8
+      -> CovariantMap1 $ \f9
+      -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9)
+      -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9)
+
+instance VFunctor (,,,,,,,,,) where
+  type VMap (,,,,,,,,,) = CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (->))))))))))
+  vmap = CovariantMap1 $ \f1
+      -> CovariantMap1 $ \f2
+      -> CovariantMap1 $ \f3
+      -> CovariantMap1 $ \f4
+      -> CovariantMap1 $ \f5
+      -> CovariantMap1 $ \f6
+      -> CovariantMap1 $ \f7
+      -> CovariantMap1 $ \f8
+      -> CovariantMap1 $ \f9
+      -> CovariantMap1 $ \f10
+      -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10)
+      -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10)
+
+instance VFunctor (,,,,,,,,,,) where
+  type VMap (,,,,,,,,,,) = CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (->)))))))))))
+  vmap = CovariantMap1 $ \f1
+      -> CovariantMap1 $ \f2
+      -> CovariantMap1 $ \f3
+      -> CovariantMap1 $ \f4
+      -> CovariantMap1 $ \f5
+      -> CovariantMap1 $ \f6
+      -> CovariantMap1 $ \f7
+      -> CovariantMap1 $ \f8
+      -> CovariantMap1 $ \f9
+      -> CovariantMap1 $ \f10
+      -> CovariantMap1 $ \f11
+      -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11)
+      -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10, f11 x11)
+
+instance VFunctor (,,,,,,,,,,,) where
+  type VMap (,,,,,,,,,,,) = CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (->))))))))))))
+  vmap = CovariantMap1 $ \f1
+      -> CovariantMap1 $ \f2
+      -> CovariantMap1 $ \f3
+      -> CovariantMap1 $ \f4
+      -> CovariantMap1 $ \f5
+      -> CovariantMap1 $ \f6
+      -> CovariantMap1 $ \f7
+      -> CovariantMap1 $ \f8
+      -> CovariantMap1 $ \f9
+      -> CovariantMap1 $ \f10
+      -> CovariantMap1 $ \f11
+      -> CovariantMap1 $ \f12
+      -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12)
+      -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10, f11 x11, f12 x12)
+
+instance VFunctor (,,,,,,,,,,,,) where
+  type VMap (,,,,,,,,,,,,) = CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (->)))))))))))))
+  vmap = CovariantMap1 $ \f1
+      -> CovariantMap1 $ \f2
+      -> CovariantMap1 $ \f3
+      -> CovariantMap1 $ \f4
+      -> CovariantMap1 $ \f5
+      -> CovariantMap1 $ \f6
+      -> CovariantMap1 $ \f7
+      -> CovariantMap1 $ \f8
+      -> CovariantMap1 $ \f9
+      -> CovariantMap1 $ \f10
+      -> CovariantMap1 $ \f11
+      -> CovariantMap1 $ \f12
+      -> CovariantMap1 $ \f13
+      -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13)
+      -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10, f11 x11, f12 x12, f13 x13)
+
+instance VFunctor (,,,,,,,,,,,,,) where
+  type VMap (,,,,,,,,,,,,,) = CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (->))))))))))))))
+  vmap = CovariantMap1 $ \f1
+      -> CovariantMap1 $ \f2
+      -> CovariantMap1 $ \f3
+      -> CovariantMap1 $ \f4
+      -> CovariantMap1 $ \f5
+      -> CovariantMap1 $ \f6
+      -> CovariantMap1 $ \f7
+      -> CovariantMap1 $ \f8
+      -> CovariantMap1 $ \f9
+      -> CovariantMap1 $ \f10
+      -> CovariantMap1 $ \f11
+      -> CovariantMap1 $ \f12
+      -> CovariantMap1 $ \f13
+      -> CovariantMap1 $ \f14
+      -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14)
+      -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10, f11 x11, f12 x12, f13 x13, f14 x14)
+
+instance VFunctor (,,,,,,,,,,,,,,) where
+  type VMap (,,,,,,,,,,,,,,) = CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (CovariantMap1 (->)))))))))))))))
+  vmap = CovariantMap1 $ \f1
+      -> CovariantMap1 $ \f2
+      -> CovariantMap1 $ \f3
+      -> CovariantMap1 $ \f4
+      -> CovariantMap1 $ \f5
+      -> CovariantMap1 $ \f6
+      -> CovariantMap1 $ \f7
+      -> CovariantMap1 $ \f8
+      -> CovariantMap1 $ \f9
+      -> CovariantMap1 $ \f10
+      -> CovariantMap1 $ \f11
+      -> CovariantMap1 $ \f12
+      -> CovariantMap1 $ \f13
+      -> CovariantMap1 $ \f14
+      -> CovariantMap1 $ \f15
+      -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15)
+      -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10, f11 x11, f12 x12, f13 x13, f14 x14, f15 x15)
+
+-- 16-tuples don't even have a Show instance, so we don't bother with an VFunctor instance either
