@@ -4,6 +4,7 @@ module NAryFunctor.Variance where
 import Control.Arrow
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
+import Control.Monad.Trans.Writer
 import Data.Bifunctor
 import Data.Functor.Const
 import Data.Functor.Identity
@@ -256,6 +257,29 @@ instance VFunctor StateT where
       -> \body
       -> StateT $ \s'
       -> fmap (f3 *** f1) $ runNF f2 $ runStateT body $ f1' s'
+
+-- |
+-- >>> :{
+-- let divideWriter :: Double -> WriterT [Double] Identity ()
+--     divideWriter x = tell [6 / x]
+--     divideWriter' :: Int -> WriterT [Int] Maybe ()
+--     divideWriter' x = do
+--       guard (x /= 0)
+--       vmap <#> fmap round
+--           <##> NF (Just . runIdentity)
+--            <#> id
+--              $ divideWriter (fromIntegral x)
+-- in execWriterT (divideWriter' 2)
+-- :}
+-- Just [3]
+instance VFunctor WriterT where
+  type VMap WriterT = CovariantT (Covariant1T (CovariantT (->)))
+  vmap = CovariantT $ \f1
+      -> Covariant1T $ \f2
+      -> CovariantT $ \f3
+      -> \body
+      -> WriterT
+       $ fmap (f3 *** f1) $ runNF f2 $ runWriterT body
 
 
 -- |
