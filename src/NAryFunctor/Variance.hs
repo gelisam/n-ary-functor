@@ -17,8 +17,8 @@ import NAryFunctor.NF
 -- |
 -- A generalization of 'Functor', 'Bifunctor', 'Trifunctor', etc., but also a
 -- generalization of 'Contravariant', 'Invariant', 'Profunctor', and 'MFunctor'.
--- We can 'vmap' over all three parameters of 'StateT' even though they have
--- different kinds and different variances.
+-- We can 'vmap' over all three type parameters of 'StateT' even though they
+-- have different kinds and different variances.
 --
 -- Let's look at the generalization of 'Functor' to n-ary functors first.
 --
@@ -46,19 +46,20 @@ import NAryFunctor.NF
 --
 -- The associated type 'VMap' is the type of 'vmap'. It is constructed by
 -- composing "mapping type transformers" and applying them to the identity
--- mapping type, the function type @(->)@. A mapping is type such as 'fmap's or
--- 'bimap's, which takes as input one function over each type parameter and
--- converts them into a function over the datatype.
+-- mapping type, the function type @(->)@. A mapping type is a type such as
+-- @fmap@'s or @bimap@'s, which takes as input one function over each type
+-- parameter and converts them into a function over the datatype.
 --
 -- When generalizing 'Functor' to an n-ary functor, all those input functions
--- are covariant, and so we need to compose @n@ copies of 'CovariantT'. Let's
--- consider the case when @n = 2@. With two copies of 'CovariantT', the type of
--- 'vmap' is @CovariantT (CovariantT (->)) f f@, so we will need to unwrap two
--- layers of 'CovariantT'. The unwrapping function is named @(\<\#\>)@, not
--- @runCovariantT@, so the call @vmap \<\#\> g \<\#\> h@ is unwrapping the two
--- 'CovariantT' layers in order to produce a value in the identity mapping type
--- @(->)@, namely a function of type @f a b -> f a' b'@. In those two calls, the
--- type of @(\<\#\>)@ gets specialized as follows:
+-- are covariant, and so we need to compose @n@ copies of the 'CovariantT'
+-- mapping type transformer. Let's consider the case @n = 2@. With two copies
+-- of 'CovariantT', the type of 'vmap' is @CovariantT (CovariantT (->)) f f@,
+-- so when calling 'vmap', we need to unwrap two layers of 'CovariantT'. The
+-- unwrapping function is named @(\<\#\>)@, not @runCovariantT@, so the call
+-- @vmap \<\#\> g \<\#\> h@ is unwrapping the two 'CovariantT' layers in order
+-- to produce a value in the identity mapping type @(->)@, namely a function of
+-- type @f a b -> f a' b'@. In those two calls, the type of @(\<\#\>)@ gets
+-- specialized as follows:
 --
 -- > (<#>) :: CovariantT (CovariantT (->)) f f
 -- >       -> (a -> a')
@@ -68,7 +69,7 @@ import NAryFunctor.NF
 -- >       -> (b -> b')
 -- >       -> f a b -> f a' b'
 --
--- Next, let's see how this approach allows us to 'vmap' over all three
+-- Next, let's see how this approach allows us to 'vmap' over all three type
 -- parameters of 'StateT'. This time, the instance looks like this:
 --
 -- > instance VFunctor StateT where
@@ -78,20 +79,46 @@ import NAryFunctor.NF
 -- 'StateT' has three type parameters, 's', 'm', and 'a'. We will thus need to
 -- compose three mapping type transformers. Since a 'StateT' computation both
 -- receives an 's' and produces an 's', this type parameter is "invariant"; a
--- confusing name which does /not/ mean that the parameter cannot vary, but
--- rather that we need both a function from 's' to 's'' and a function from 's''
--- back to 's' in order to convert a @StateT s m a@ into a @StateT s' m a@. By
--- contrast, the 'a' type parameter is covariant, because we only need a
--- function from 'a' to 'a'' in order to convert a @StateT s m a@ into a @StateT
--- s m a'@.
+-- standard but confusing name which does /not/ mean that the parameter cannot
+-- vary, but rather that we need both a function from 's' to 's'' and a
+-- function from 's'' back to 's' in order to convert a @StateT s m a@ into a
+-- @StateT s' m a@. By contrast, the 'a' type parameter is covariant, because
+-- we only need a function from 'a' to 'a'' in order to convert a @StateT s m
+-- a@ into a @StateT s m a'@.
 --
 -- As for the 'm' type parameter, we need a natural transformation @forall x. m
 -- x -> m' x@ in order to convert a @StateT s m a@ into a @StateT s m' a@. This
--- is still covariant, but for type parameters of kind @* -> *@, so we follow the
+-- is still covariant, but for a type parameter of kind @* -> *@, so we follow the
 -- [convention](http://hackage.haskell.org/package/base-4.11.1.0/docs/Data-Functor-Classes.html)
--- and add a @1@ to the name of the mapping type transformer. For all three type
--- parameters, the three mapping type transformers we must combine are thus
--- 'InvariantT', 'Covariant1T', and 'CovariantT'.
+-- and add a @1@ to the name of the mapping type transformer. To 'vmap' over
+-- all three type parameters, the three mapping type transformers we must
+-- combine are thus 'InvariantT', 'Covariant1T', and 'CovariantT', and so the
+-- type of @StateT@'s 'vmap' is @InvariantT (Covariant1T (CovariantT (->)))@.
+-- Each of these is unwrapped via a different infix operator:
+-- @vmap \<\#\>/\>\#\< (f,f') \<\#\#\> NF g \<\#\> h@, whose types get
+-- specialized as follows:
+--
+-- > (<#>/>#<) :: InvariantT (Covariant1T (CovariantT (->))) StateT StateT
+-- >           -> (s -> s', s' -> s)
+-- >           -> Covariant1T (CovariantT (->)) (StateT s) (StateT s')
+-- >
+-- > (<##>) :: (Functor m, Functor m')
+-- >        => Covariant1T (CovariantT (->)) (StateT s) (StateT s')
+-- >        -> NF m m'
+-- >        -> CovariantT (->) (StateT s m) (StateT s' m')
+-- >
+-- > (<#>) :: CovariantT (->) (StateT s m) (StateT s' m')
+-- >       -> (a -> a')
+-- >       -> StateT s m a -> StateT s' m' a'
+--
+-- Since 'vmap' can have so many different types, it's a bit hard to state the
+-- laws in general, but it's the obvious ones: using 'id' everywhere yields
+-- 'id', and two composed 'vmap's is equivalent to a single 'vmap' in which the
+-- functions are composed; covariantly or contravariantly, as appropriate. For
+-- example, the laws for @StateT@'s 'vmap' are:
+--
+-- > vmap <#>/>#< (id,id) <##> id <#> id = id
+-- > (vmap <#>/>#< (f1,f1') <##> f2 <#> f3) . (vmap <#>/>#< (g1,g1') <##> g2 <#> g3) = vmap <#>/>#< (f1 . g1, g1' . f1') <##> (f2 . g2) <#> (f3 . g3)
 class VFunctor (f :: k) where
   type VMap f :: k -> k -> *
   vmap :: VMap f f f
