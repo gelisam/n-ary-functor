@@ -2,6 +2,7 @@
 module NAryFunctor.Variance where
 
 import Control.Arrow
+import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Data.Bifunctor
 import Data.Functor.Const
@@ -208,6 +209,29 @@ instance VFunctor NF where
       -> Covariant1T $ \(NF f2)
       -> \(NF g)
       -> NF (f2 . g . f1')
+
+-- |
+-- >>> :{
+-- let divideReader :: Double -> ReaderT Double Identity Double
+--     divideReader x = (/ x) <$> ask
+--     divideReader' :: Int -> ReaderT Int Maybe Int
+--     divideReader' x = do
+--       guard (x /= 0)
+--       vmap >#< fromIntegral
+--           <##> NF (Just . runIdentity)
+--            <#> round
+--              $ divideReader (fromIntegral x)
+-- in runReaderT (divideReader' 2) 6
+-- :}
+-- Just 3
+instance VFunctor (ReaderT :: * -> (* -> *) -> * -> *) where
+  type VMap ReaderT = ContravariantT (Covariant1T (CovariantT (->)))
+  vmap = ContravariantT $ \f1'
+      -> Covariant1T $ \f2
+      -> CovariantT $ \f3
+      -> \body
+      -> ReaderT $ \r'
+      -> fmap f3 $ runNF f2 $ runReaderT body $ f1' r'
 
 -- |
 -- >>> :{
