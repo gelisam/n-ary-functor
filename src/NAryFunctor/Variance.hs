@@ -202,6 +202,13 @@ instance VFunctor (->) where
       -> \g
       -> f2 . g . f1'
 
+instance VFunctor NF where
+  type VMap NF = Contravariant1T (Covariant1T (->))
+  vmap = Contravariant1T $ \(NF f1')
+      -> Covariant1T $ \(NF f2)
+      -> \(NF g)
+      -> NF (f2 . g . f1')
+
 -- |
 -- >>> :{
 -- let divideState :: Double -> StateT Double Identity ()
