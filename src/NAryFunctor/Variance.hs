@@ -7,6 +7,8 @@ import Data.Bifunctor
 import Data.Functor.Const
 import Data.Functor.Identity
 
+import NAryFunctor.NF
+
 -- $setup
 -- >>> import Control.Monad
 -- >>> import Control.Monad.IO.Class
@@ -120,10 +122,6 @@ newtype PhantomvariantT to f f' = PhantomvariantT
   }
 
 
-
-newtype NF m m' = NF
-  { runNF :: forall a. m a -> m' a
-  }
 
 newtype Covariant1T to f f' = Covariant1T
   { (<##>) :: forall m m'. (Functor m, Functor m')
