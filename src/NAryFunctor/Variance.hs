@@ -257,7 +257,7 @@ instance Functor m
 
 
 -- |
--- A bold instance! We would be suspicious of any instance for @f a@, because
+-- A bold instance! We should be suspicious of any instance for @f a@, because
 -- it is likely to overlap with other instances. For instance, what if we want
 -- to define a @VFunctor ((->) a)@ instance corresponding to the @Functor ((->) a)@
 -- instance?
