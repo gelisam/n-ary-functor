@@ -9,7 +9,7 @@ import Data.Bifunctor
 import Data.Functor.Const
 import Data.Functor.Identity
 
-import NAryFunctor.NF
+import NAryFunctor.NT
 
 -- $setup
 -- >>> import Control.Monad.Trans.Class
@@ -92,7 +92,7 @@ import NAryFunctor.NF
 -- thus 'InvariantT', 'Covariant1T', and 'CovariantT', and so the type of
 -- @StateT@'s 'vmap' is @InvariantT (Covariant1T (CovariantT (->)))@.
 -- Each of these is unwrapped via a different infix operator:
--- @vmap \<\#\>/\>\#\< (f,f') \<\#\#\> NF g \<\#\> h@, whose types get
+-- @vmap \<\#\>/\>\#\< (f,f') \<\#\#\> NT g \<\#\> h@, whose types get
 -- specialized as follows:
 --
 -- > (<#>/>#<) :: InvariantT (Covariant1T (CovariantT (->))) StateT StateT
@@ -101,7 +101,7 @@ import NAryFunctor.NF
 -- >
 -- > (<##>) :: (Functor m, Functor m')
 -- >        => Covariant1T (CovariantT (->)) (StateT s) (StateT s')
--- >        -> NF m m'
+-- >        -> NT m m'
 -- >        -> CovariantT (->) (StateT s m) (StateT s' m')
 -- >
 -- > (<#>) :: CovariantT (->) (StateT s m) (StateT s' m')
@@ -224,35 +224,35 @@ instance MappingTransformer PhantomvariantT a where
 
 newtype Covariant1T to f f' = Covariant1T
   { (<##>) :: forall m m'. (Functor m, Functor m')
-           => NF m m'
+           => NT m m'
            -> f m `to` f' m'
   }
 
 instance Functor m
       => MappingTransformer Covariant1T m where
-  t -#- () = t <##> NF id
+  t -#- () = t <##> NT id
 
 
 newtype Contravariant1T to f f' = Contravariant1T
   { (>##<) :: forall m m'. (Functor m, Functor m')
-           => NF m' m
+           => NT m' m
            -> f m `to` f' m'
   }
 
 instance Functor m
       => MappingTransformer Contravariant1T m where
-  t -#- () = t >##< NF id
+  t -#- () = t >##< NT id
 
 
 newtype Invariant1T to f f' = Invariant1T
   { (<##>/>##<) :: forall m m'. (Functor m, Functor m')
-                => (NF m m', NF m' m)
+                => (NT m m', NT m' m)
                 -> f m `to` f' m'
   }
 
 instance Functor m
       => MappingTransformer Invariant1T m where
-  t -#- () = t <##>/>##< (NF id, NF id)
+  t -#- () = t <##>/>##< (NT id, NT id)
 
 
 
@@ -339,18 +339,18 @@ instance VFunctor (->) where
       -> \g
       -> f2 . g . f1'
 
-instance VFunctor NF where
-  type VMap NF = Contravariant1T (Covariant1T (->))
-  vmap = Contravariant1T $ \(NF f1')
-      -> Covariant1T $ \(NF f2)
-      -> \(NF g)
-      -> NF (f2 . g . f1')
+instance VFunctor NT where
+  type VMap NT = Contravariant1T (Covariant1T (->))
+  vmap = Contravariant1T $ \(NT f1')
+      -> Covariant1T $ \(NT f2)
+      -> \(NT g)
+      -> NT (f2 . g . f1')
 
 -- |
 -- >>> let readerIntIdentityInt    = ((`div` 2) <$> ask) >>= lift . Identity
 -- >>> let readerIntIdentityString = vmap                                         <#> show $ readerIntIdentityInt
--- >>> let readerIntMaybeString    = vmap            <##> NF (Just . runIdentity) <#> show $ readerIntIdentityInt
--- >>> let readerStringMaybeString = vmap >#< length <##> NF (Just . runIdentity) <#> show $ readerIntIdentityInt
+-- >>> let readerIntMaybeString    = vmap            <##> NT (Just . runIdentity) <#> show $ readerIntIdentityInt
+-- >>> let readerStringMaybeString = vmap >#< length <##> NT (Just . runIdentity) <#> show $ readerIntIdentityInt
 -- >>> runReaderT readerIntIdentityInt 4
 -- Identity 2
 -- >>> runReaderT readerIntIdentityString 4
@@ -361,14 +361,14 @@ instance VFunctor NF where
 -- Just "2"
 --
 -- >>> let readerIntIdentityInt'      = vmap                                         -#- ()   $ readerIntIdentityInt
--- >>> let readerIntMaybeInt          = vmap            <##> NF (Just . runIdentity) -#- ()   $ readerIntIdentityInt
+-- >>> let readerIntMaybeInt          = vmap            <##> NT (Just . runIdentity) -#- ()   $ readerIntIdentityInt
 -- >>> let readerIntIdentityString    = vmap            -#-  ()                      <#> show $ readerIntIdentityInt
 -- >>> let readerIntIdentityInt''     = vmap            -#-  ()                      -#- ()   $ readerIntIdentityInt
--- >>> let readerStringMaybeInt       = vmap >#< length <##> NF (Just . runIdentity) -#- ()   $ readerIntIdentityInt
+-- >>> let readerStringMaybeInt       = vmap >#< length <##> NT (Just . runIdentity) -#- ()   $ readerIntIdentityInt
 -- >>> let readerStringIdentityString = vmap >#< length -#-  ()                      <#> show $ readerIntIdentityInt
 -- >>> let readerStringIdentityInt    = vmap >#< length -#-  ()                      -#- ()   $ readerIntIdentityInt
--- >>> let readerIntMaybeString       = vmap -#- ()     <##> NF (Just . runIdentity) <#> show $ readerIntIdentityInt
--- >>> let readerIntMaybeInt'         = vmap -#- ()     <##> NF (Just . runIdentity) -#- ()   $ readerIntIdentityInt
+-- >>> let readerIntMaybeString       = vmap -#- ()     <##> NT (Just . runIdentity) <#> show $ readerIntIdentityInt
+-- >>> let readerIntMaybeInt'         = vmap -#- ()     <##> NT (Just . runIdentity) -#- ()   $ readerIntIdentityInt
 -- >>> let readerIntIdentityString'   = vmap -#- ()     -#-  ()                      <#> show $ readerIntIdentityInt
 -- >>> let readerIntIdentityInt'''    = vmap -#- ()     -#-  ()                      -#- ()   $ readerIntIdentityInt
 -- >>> runReaderT readerIntIdentityInt' 4
@@ -400,13 +400,13 @@ instance VFunctor (ReaderT :: * -> (* -> *) -> * -> *) where
       -> CovariantT $ \f3
       -> \body
       -> ReaderT $ \r'
-      -> fmap f3 $ runNF f2 $ runReaderT body $ f1' r'
+      -> fmap f3 $ runNT f2 $ runReaderT body $ f1' r'
 
 -- |
 -- >>> let stateIntIdentityInt    = ((`div` 2) <$> get) >>= lift . Identity
 -- >>> let stateIntIdentityString = vmap                                                                   <#> show $ stateIntIdentityInt
--- >>> let stateIntMaybeString    = vmap                                      <##> NF (Just . runIdentity) <#> show $ stateIntIdentityInt
--- >>> let stateStringMaybeString = vmap <#>/>#< (flip replicate '.', length) <##> NF (Just . runIdentity) <#> show $ stateIntIdentityInt
+-- >>> let stateIntMaybeString    = vmap                                      <##> NT (Just . runIdentity) <#> show $ stateIntIdentityInt
+-- >>> let stateStringMaybeString = vmap <#>/>#< (flip replicate '.', length) <##> NT (Just . runIdentity) <#> show $ stateIntIdentityInt
 -- >>> runStateT stateIntIdentityInt 4
 -- Identity (2,4)
 -- >>> runStateT stateIntIdentityString 4
@@ -417,14 +417,14 @@ instance VFunctor (ReaderT :: * -> (* -> *) -> * -> *) where
 -- Just ("2","....")
 --
 -- >>> let stateIntIdentityInt'      = vmap                                                                           -#- ()   $ stateIntIdentityInt
--- >>> let stateIntMaybeInt          = vmap                                              <##> NF (Just . runIdentity) -#- ()   $ stateIntIdentityInt
+-- >>> let stateIntMaybeInt          = vmap                                              <##> NT (Just . runIdentity) -#- ()   $ stateIntIdentityInt
 -- >>> let stateIntIdentityString    = vmap                                              -#-  ()                      <#> show $ stateIntIdentityInt
 -- >>> let stateIntIdentityInt''     = vmap                                              -#-  ()                      -#- ()   $ stateIntIdentityInt
--- >>> let stateStringMaybeInt       = vmap <#>/>#< (flip replicate '.', length) <##> NF (Just . runIdentity) -#- ()   $ stateIntIdentityInt
+-- >>> let stateStringMaybeInt       = vmap <#>/>#< (flip replicate '.', length) <##> NT (Just . runIdentity) -#- ()   $ stateIntIdentityInt
 -- >>> let stateStringIdentityString = vmap <#>/>#< (flip replicate '.', length) -#-  ()                      <#> show $ stateIntIdentityInt
 -- >>> let stateStringIdentityInt    = vmap <#>/>#< (flip replicate '.', length) -#-  ()                      -#- ()   $ stateIntIdentityInt
--- >>> let stateIntMaybeString       = vmap -#-     ()                           <##> NF (Just . runIdentity) <#> show $ stateIntIdentityInt
--- >>> let stateIntMaybeInt'         = vmap -#-     ()                           <##> NF (Just . runIdentity) -#- ()   $ stateIntIdentityInt
+-- >>> let stateIntMaybeString       = vmap -#-     ()                           <##> NT (Just . runIdentity) <#> show $ stateIntIdentityInt
+-- >>> let stateIntMaybeInt'         = vmap -#-     ()                           <##> NT (Just . runIdentity) -#- ()   $ stateIntIdentityInt
 -- >>> let stateIntIdentityString'   = vmap -#-     ()                           -#-  ()                      <#> show $ stateIntIdentityInt
 -- >>> let stateIntIdentityInt'''    = vmap -#-     ()                           -#-  ()                      -#- ()   $ stateIntIdentityInt
 -- >>> runStateT stateIntIdentityInt' 4
@@ -456,13 +456,13 @@ instance VFunctor StateT where
       -> CovariantT $ \f3
       -> \body
       -> StateT $ \s'
-      -> fmap (f3 *** f1) $ runNF f2 $ runStateT body $ f1' s'
+      -> fmap (f3 *** f1) $ runNT f2 $ runStateT body $ f1' s'
 
 -- |
 -- >>> let writerIntIdentityInt    = do {tell [4]; lift $ Identity 2}
 -- >>> let writerIntIdentityString = vmap                                       <#> show $ writerIntIdentityInt
--- >>> let writerIntMaybeString    = vmap          <##> NF (Just . runIdentity) <#> show $ writerIntIdentityInt
--- >>> let writerStringMaybeString = vmap <#> show <##> NF (Just . runIdentity) <#> show $ writerIntIdentityInt
+-- >>> let writerIntMaybeString    = vmap          <##> NT (Just . runIdentity) <#> show $ writerIntIdentityInt
+-- >>> let writerStringMaybeString = vmap <#> show <##> NT (Just . runIdentity) <#> show $ writerIntIdentityInt
 -- >>> runWriterT writerIntIdentityInt
 -- Identity (2,[4])
 -- >>> runWriterT writerIntIdentityString
@@ -473,14 +473,14 @@ instance VFunctor StateT where
 -- Just ("2","[4]")
 --
 -- >>> let writerIntIdentityInt'      = vmap                                                                    -#- ()   $ writerIntIdentityInt
--- >>> let writerIntMaybeInt          = vmap                                       <##> NF (Just . runIdentity) -#- ()   $ writerIntIdentityInt
+-- >>> let writerIntMaybeInt          = vmap                                       <##> NT (Just . runIdentity) -#- ()   $ writerIntIdentityInt
 -- >>> let writerIntIdentityString    = vmap                                       -#-  ()                      <#> show $ writerIntIdentityInt
 -- >>> let writerIntIdentityInt''     = vmap                                       -#-  ()                      -#- ()   $ writerIntIdentityInt
--- >>> let writerStringMaybeInt       = vmap <#> show <##> NF (Just . runIdentity) -#- ()   $ writerIntIdentityInt
+-- >>> let writerStringMaybeInt       = vmap <#> show <##> NT (Just . runIdentity) -#- ()   $ writerIntIdentityInt
 -- >>> let writerStringIdentityString = vmap <#> show -#-  ()                      <#> show $ writerIntIdentityInt
 -- >>> let writerStringIdentityInt    = vmap <#> show -#-  ()                      -#- ()   $ writerIntIdentityInt
--- >>> let writerIntMaybeString       = vmap -#- ()   <##> NF (Just . runIdentity) <#> show $ writerIntIdentityInt
--- >>> let writerIntMaybeInt'         = vmap -#- ()   <##> NF (Just . runIdentity) -#- ()   $ writerIntIdentityInt
+-- >>> let writerIntMaybeString       = vmap -#- ()   <##> NT (Just . runIdentity) <#> show $ writerIntIdentityInt
+-- >>> let writerIntMaybeInt'         = vmap -#- ()   <##> NT (Just . runIdentity) -#- ()   $ writerIntIdentityInt
 -- >>> let writerIntIdentityString'   = vmap -#- ()   -#-  ()                      <#> show $ writerIntIdentityInt
 -- >>> let writerIntIdentityInt'''    = vmap -#- ()   -#-  ()                      -#- ()   $ writerIntIdentityInt
 -- >>> runWriterT writerIntIdentityInt'
@@ -512,7 +512,7 @@ instance VFunctor WriterT where
       -> CovariantT $ \f3
       -> \body
       -> WriterT
-       $ fmap (f3 *** f1) $ runNF f2 $ runWriterT body
+       $ fmap (f3 *** f1) $ runNT f2 $ runWriterT body
 
 
 -- |
