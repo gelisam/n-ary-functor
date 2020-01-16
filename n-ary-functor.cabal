@@ -15,7 +15,6 @@ extra-source-files:  README.md
 library
   exposed-modules:     NAryFunctor
                      , NAryFunctor.NT
-                     , NAryFunctor.Variance
   build-depends:       base >=4.9 && <5
                      , transformers -any
   hs-source-dirs:      src
