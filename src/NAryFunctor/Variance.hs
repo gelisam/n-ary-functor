@@ -18,42 +18,42 @@ import NAryFunctor.NT
 -- |
 -- A generalization of 'Functor', 'Bifunctor', 'Trifunctor', etc., but also a
 -- generalization of 'Contravariant', 'Invariant', 'Profunctor', and 'MFunctor'.
--- We can 'vmap' over all three type parameters of 'StateT' even though they
+-- We can 'nmap' over all three type parameters of 'StateT' even though they
 -- have different kinds and different variances.
 --
 -- Let's look at the generalization of 'Functor' to n-ary functors first.
 --
 -- Example usage:
 --
--- >>> vmap <#> (+1) $ Identity (0::Int)
+-- >>> nmap <#> (+1) $ Identity (0::Int)
 -- Identity 1
 --
--- >>> vmap <#> (+1) <#> (+2) $ (0::Int, 0::Int)
+-- >>> nmap <#> (+1) <#> (+2) $ (0::Int, 0::Int)
 -- (1,2)
 --
--- >>> vmap <#> (+1) <#> (+2) <#> (+3) $ (0::Int, 0::Int, 0::Int)
+-- >>> nmap <#> (+1) <#> (+2) <#> (+3) $ (0::Int, 0::Int, 0::Int)
 -- (1,2,3)
 --
 -- Laws:
 --
--- > vmap <#> id <#> ... <#> id = id
--- > (vmap <#> f1 <#> ... <#> fN) . (vmap <#> g1 <#> ... <#> gN) = vmap <#> (f1 . g1) <#> ... <#> (fN . gN)
+-- > nmap <#> id <#> ... <#> id = id
+-- > (nmap <#> f1 <#> ... <#> fN) . (nmap <#> g1 <#> ... <#> gN) = nmap <#> (f1 . g1) <#> ... <#> (fN . gN)
 --
 -- Example instance:
 --
--- > instance VFunctor (,,) where
--- >   type VMap (,,) = CovariantT (CovariantT (CovariantT (->)))
--- >   vmap = ...
+-- > instance NFunctor (,,) where
+-- >   type Variance (,,) = CovariantT (CovariantT (CovariantT (->)))
+-- >   nmap = ...
 --
--- The associated type 'VMap' specifies variance of all the type parameters
+-- The associated type 'Variance' specifies variance of all the type parameters
 -- using a stack of 'MappingTransformer' ending with @(->)@. When generalizing
 -- 'Functor' to an n-ary functor, all the type parameters are covariant, and
 -- so we need to compose @n@ copies of the 'CovariantT' mapping transformer.
 --
 -- Let's consider the case @n = 2@. With two copies of 'CovariantT', the type of
--- 'vmap' is @CovariantT (CovariantT (->)) f f@, so when calling 'vmap', we need
+-- 'nmap' is @CovariantT (CovariantT (->)) f f@, so when calling 'nmap', we need
 -- to unwrap two layers of 'CovariantT'. The unwrapping function is named
--- @(\<\#\>)@, not @runCovariantT@, so the call @vmap \<\#\> g \<\#\> h@ is
+-- @(\<\#\>)@, not @runCovariantT@, so the call @nmap \<\#\> g \<\#\> h@ is
 -- unwrapping the two 'CovariantT' layers in order to produce a value in the
 -- base @(->)@ mapping, namely a function of type @f a b -> f a' b'@. In those
 -- two calls, the type of @(\<\#\>)@ gets specialized as follows:
@@ -66,12 +66,12 @@ import NAryFunctor.NT
 -- >       -> (b -> b')
 -- >       -> f a b -> f a' b'
 --
--- Next, let's see how this approach allows us to 'vmap' over all three type
+-- Next, let's see how this approach allows us to 'nmap' over all three type
 -- parameters of 'StateT'. This time, the instance looks like this:
 --
--- > instance VFunctor StateT where
--- >   type VMap StateT = InvariantT (Covariant1T (CovariantT (->)))
--- >   vmap = ...
+-- > instance NFunctor StateT where
+-- >   type Variance StateT = InvariantT (Covariant1T (CovariantT (->)))
+-- >   nmap = ...
 --
 -- 'StateT' has three type parameters, 's', 'm', and 'a'. We will thus need to
 -- compose three mapping transformers. Since a 'StateT' computation both
@@ -87,12 +87,12 @@ import NAryFunctor.NT
 -- x -> m' x@ in order to convert a @StateT s m a@ into a @StateT s m' a@. This
 -- is still covariant, but for a type parameter of kind @* -> *@, so we follow the
 -- [convention](http://hackage.haskell.org/package/base-4.11.1.0/docs/Data-Functor-Classes.html)
--- and add a @1@ to the name of the mapping transformer. To 'vmap' over all
+-- and add a @1@ to the name of the mapping transformer. To 'nmap' over all
 -- three type parameters, the three mapping transformers we must combine are
 -- thus 'InvariantT', 'Covariant1T', and 'CovariantT', and so the type of
--- @StateT@'s 'vmap' is @InvariantT (Covariant1T (CovariantT (->)))@.
+-- @StateT@'s 'nmap' is @InvariantT (Covariant1T (CovariantT (->)))@.
 -- Each of these is unwrapped via a different infix operator:
--- @vmap \<\#\>/\>\#\< (f,f') \<\#\#\> NT g \<\#\> h@, whose types get
+-- @nmap \<\#\>/\>\#\< (f,f') \<\#\#\> NT g \<\#\> h@, whose types get
 -- specialized as follows:
 --
 -- > (<#>/>#<) :: InvariantT (Covariant1T (CovariantT (->))) StateT StateT
@@ -108,17 +108,17 @@ import NAryFunctor.NT
 -- >       -> (a -> a')
 -- >       -> StateT s m a -> StateT s' m' a'
 --
--- Since 'vmap' can have so many different types, it's a bit hard to state the
+-- Since 'nmap' can have so many different types, it's a bit hard to state the
 -- laws in general, but it's the obvious ones: using 'id' everywhere yields
--- 'id', and two composed 'vmap's is equivalent to a single 'vmap' in which the
+-- 'id', and two composed 'nmap's is equivalent to a single 'nmap' in which the
 -- functions are composed; covariantly or contravariantly, as appropriate. For
--- example, the laws for @StateT@'s 'vmap' are:
+-- example, the laws for @StateT@'s 'nmap' are:
 --
--- > vmap <#>/>#< (id,id) <##> id <#> id = id
--- > (vmap <#>/>#< (f1,f1') <##> f2 <#> f3) . (vmap <#>/>#< (g1,g1') <##> g2 <#> g3) = vmap <#>/>#< (f1 . g1, g1' . f1') <##> (f2 . g2) <#> (f3 . g3)
-class VFunctor (f :: k) where
-  type VMap f :: k -> k -> *
-  vmap :: VMap f f f
+-- > nmap <#>/>#< (id,id) <##> id <#> id = id
+-- > (nmap <#>/>#< (f1,f1') <##> f2 <#> f3) . (nmap <#>/>#< (g1,g1') <##> g2 <#> g3) = nmap <#>/>#< (f1 . g1, g1' . f1') <##> (f2 . g2) <#> (f3 . g3)
+class NFunctor (f :: k) where
+  type Variance f :: k -> k -> *
+  nmap :: Variance f f f
 
 
 -- |
@@ -259,27 +259,27 @@ instance Functor m
 -- |
 -- A bold instance! We should be suspicious of any instance for @f a@, because
 -- it is likely to overlap with other instances. For instance, what if we want
--- to define a @VFunctor ((->) a)@ instance corresponding to the @Functor ((->) a)@
+-- to define a @NFunctor ((->) a)@ instance corresponding to the @Functor ((->) a)@
 -- instance?
 --
 -- I claim that we will never want to write such an instance; we will always
--- prefer to write the @VFunctor (->)@ instance instead, and to have the
--- @VFunctor ((->) a)@ derived from the @VFunctor (->)@ instance via this bold
+-- prefer to write the @NFunctor (->)@ instance instead, and to have the
+-- @NFunctor ((->) a)@ derived from the @NFunctor (->)@ instance via this bold
 -- instance. If you really can't find a way to transform a type parameter, use
 -- 'NonvariantT' to skip over it.
 
-instance ( VFunctor f
-         , VMap f ~ t inner
+instance ( NFunctor f
+         , Variance f ~ t inner
          , MappingTransformer t a
          )
-      => VFunctor (f a) where
-  --type VMap (f a) = inner
-  type VMap (f a) = MappingTransformer'Inner (VMap f)
-  vmap = vmap -#- ()
+      => NFunctor (f a) where
+  --type Variance (f a) = inner
+  type Variance (f a) = MappingTransformer'Inner (Variance f)
+  nmap = nmap -#- ()
 
--- We can't write @type VMap (f a) = inner@, ghc complains that 'inner' is not
+-- We can't write @type Variance (f a) = inner@, ghc complains that 'inner' is not
 -- in scope, so we instead have to write this type family which extracts 'inner'
--- from @VMap f@.
+-- from @Variance f@.
 type family MappingTransformer'Inner f where
   MappingTransformer'Inner (t inner) = inner
 
@@ -290,29 +290,29 @@ type family MappingTransformer'Inner f where
 -- Instances
 
 -- |
--- >>> vmap          <#> (+2) $ Right (0::Int)
+-- >>> nmap          <#> (+2) $ Right (0::Int)
 -- Right 2
--- >>> vmap <#> (+1) <#> (+2) $ Left (0::Int)
+-- >>> nmap <#> (+1) <#> (+2) $ Left (0::Int)
 -- Left 1
 --
--- >>> vmap          -#- ()   $ Right (0::Int)
+-- >>> nmap          -#- ()   $ Right (0::Int)
 -- Right 0
--- >>> vmap <#> (+1) -#- ()   $ Left (0::Int)
+-- >>> nmap <#> (+1) -#- ()   $ Left (0::Int)
 -- Left 1
--- >>> vmap -#- ()   <#> (+2) $ Right (0::Int)
+-- >>> nmap -#- ()   <#> (+2) $ Right (0::Int)
 -- Right 2
--- >>> vmap -#- ()   -#- ()   $ Left (0::Int)
+-- >>> nmap -#- ()   -#- ()   $ Left (0::Int)
 -- Left 0
-instance VFunctor Either where
-  type VMap Either = CovariantT (CovariantT (->))
-  vmap = CovariantT $ \f1
+instance NFunctor Either where
+  type Variance Either = CovariantT (CovariantT (->))
+  nmap = CovariantT $ \f1
       -> CovariantT $ \f2
       -> bimap f1 f2
 
 -- |
 -- >>> let intToInt       =                            succ
--- >>> let intToString    = vmap            <#> show $ succ
--- >>> let stringToString = vmap >#< length <#> show $ succ
+-- >>> let intToString    = nmap            <#> show $ succ
+-- >>> let stringToString = nmap >#< length <#> show $ succ
 -- >>> intToInt 3
 -- 4
 -- >>> intToString 3
@@ -320,10 +320,10 @@ instance VFunctor Either where
 -- >>> stringToString "foo"
 -- "4"
 --
--- >>> let intToInt    = vmap            -#- ()   $ succ
--- >>> let stringToInt = vmap >#< length -#- ()   $ succ
--- >>> let intToString = vmap -#- ()     <#> show $ succ
--- >>> let intToInt'   = vmap -#- ()     -#- ()   $ succ
+-- >>> let intToInt    = nmap            -#- ()   $ succ
+-- >>> let stringToInt = nmap >#< length -#- ()   $ succ
+-- >>> let intToString = nmap -#- ()     <#> show $ succ
+-- >>> let intToInt'   = nmap -#- ()     -#- ()   $ succ
 -- >>> intToInt 3
 -- 4
 -- >>> stringToInt "foo"
@@ -332,25 +332,25 @@ instance VFunctor Either where
 -- "4"
 -- >>> intToInt' 3
 -- 4
-instance VFunctor (->) where
-  type VMap (->) = ContravariantT (CovariantT (->))
-  vmap = ContravariantT $ \f1'
+instance NFunctor (->) where
+  type Variance (->) = ContravariantT (CovariantT (->))
+  nmap = ContravariantT $ \f1'
       -> CovariantT $ \f2
       -> \g
       -> f2 . g . f1'
 
-instance VFunctor NT where
-  type VMap NT = Contravariant1T (Covariant1T (->))
-  vmap = Contravariant1T $ \(NT f1')
+instance NFunctor NT where
+  type Variance NT = Contravariant1T (Covariant1T (->))
+  nmap = Contravariant1T $ \(NT f1')
       -> Covariant1T $ \(NT f2)
       -> \(NT g)
       -> NT (f2 . g . f1')
 
 -- |
 -- >>> let readerIntIdentityInt    = ((`div` 2) <$> ask) >>= lift . Identity
--- >>> let readerIntIdentityString = vmap                                         <#> show $ readerIntIdentityInt
--- >>> let readerIntMaybeString    = vmap            <##> NT (Just . runIdentity) <#> show $ readerIntIdentityInt
--- >>> let readerStringMaybeString = vmap >#< length <##> NT (Just . runIdentity) <#> show $ readerIntIdentityInt
+-- >>> let readerIntIdentityString = nmap                                         <#> show $ readerIntIdentityInt
+-- >>> let readerIntMaybeString    = nmap            <##> NT (Just . runIdentity) <#> show $ readerIntIdentityInt
+-- >>> let readerStringMaybeString = nmap >#< length <##> NT (Just . runIdentity) <#> show $ readerIntIdentityInt
 -- >>> runReaderT readerIntIdentityInt 4
 -- Identity 2
 -- >>> runReaderT readerIntIdentityString 4
@@ -360,17 +360,17 @@ instance VFunctor NT where
 -- >>> runReaderT readerStringMaybeString "four"
 -- Just "2"
 --
--- >>> let readerIntIdentityInt'      = vmap                                         -#- ()   $ readerIntIdentityInt
--- >>> let readerIntMaybeInt          = vmap            <##> NT (Just . runIdentity) -#- ()   $ readerIntIdentityInt
--- >>> let readerIntIdentityString    = vmap            -#-  ()                      <#> show $ readerIntIdentityInt
--- >>> let readerIntIdentityInt''     = vmap            -#-  ()                      -#- ()   $ readerIntIdentityInt
--- >>> let readerStringMaybeInt       = vmap >#< length <##> NT (Just . runIdentity) -#- ()   $ readerIntIdentityInt
--- >>> let readerStringIdentityString = vmap >#< length -#-  ()                      <#> show $ readerIntIdentityInt
--- >>> let readerStringIdentityInt    = vmap >#< length -#-  ()                      -#- ()   $ readerIntIdentityInt
--- >>> let readerIntMaybeString       = vmap -#- ()     <##> NT (Just . runIdentity) <#> show $ readerIntIdentityInt
--- >>> let readerIntMaybeInt'         = vmap -#- ()     <##> NT (Just . runIdentity) -#- ()   $ readerIntIdentityInt
--- >>> let readerIntIdentityString'   = vmap -#- ()     -#-  ()                      <#> show $ readerIntIdentityInt
--- >>> let readerIntIdentityInt'''    = vmap -#- ()     -#-  ()                      -#- ()   $ readerIntIdentityInt
+-- >>> let readerIntIdentityInt'      = nmap                                         -#- ()   $ readerIntIdentityInt
+-- >>> let readerIntMaybeInt          = nmap            <##> NT (Just . runIdentity) -#- ()   $ readerIntIdentityInt
+-- >>> let readerIntIdentityString    = nmap            -#-  ()                      <#> show $ readerIntIdentityInt
+-- >>> let readerIntIdentityInt''     = nmap            -#-  ()                      -#- ()   $ readerIntIdentityInt
+-- >>> let readerStringMaybeInt       = nmap >#< length <##> NT (Just . runIdentity) -#- ()   $ readerIntIdentityInt
+-- >>> let readerStringIdentityString = nmap >#< length -#-  ()                      <#> show $ readerIntIdentityInt
+-- >>> let readerStringIdentityInt    = nmap >#< length -#-  ()                      -#- ()   $ readerIntIdentityInt
+-- >>> let readerIntMaybeString       = nmap -#- ()     <##> NT (Just . runIdentity) <#> show $ readerIntIdentityInt
+-- >>> let readerIntMaybeInt'         = nmap -#- ()     <##> NT (Just . runIdentity) -#- ()   $ readerIntIdentityInt
+-- >>> let readerIntIdentityString'   = nmap -#- ()     -#-  ()                      <#> show $ readerIntIdentityInt
+-- >>> let readerIntIdentityInt'''    = nmap -#- ()     -#-  ()                      -#- ()   $ readerIntIdentityInt
 -- >>> runReaderT readerIntIdentityInt' 4
 -- Identity 2
 -- >>> runReaderT readerIntMaybeInt 4
@@ -393,9 +393,9 @@ instance VFunctor NT where
 -- Identity "2"
 -- >>> runReaderT readerIntIdentityInt''' 4
 -- Identity 2
-instance VFunctor (ReaderT :: * -> (* -> *) -> * -> *) where
-  type VMap ReaderT = ContravariantT (Covariant1T (CovariantT (->)))
-  vmap = ContravariantT $ \f1'
+instance NFunctor (ReaderT :: * -> (* -> *) -> * -> *) where
+  type Variance ReaderT = ContravariantT (Covariant1T (CovariantT (->)))
+  nmap = ContravariantT $ \f1'
       -> Covariant1T $ \f2
       -> CovariantT $ \f3
       -> \body
@@ -404,9 +404,9 @@ instance VFunctor (ReaderT :: * -> (* -> *) -> * -> *) where
 
 -- |
 -- >>> let stateIntIdentityInt    = ((`div` 2) <$> get) >>= lift . Identity
--- >>> let stateIntIdentityString = vmap                                                                   <#> show $ stateIntIdentityInt
--- >>> let stateIntMaybeString    = vmap                                      <##> NT (Just . runIdentity) <#> show $ stateIntIdentityInt
--- >>> let stateStringMaybeString = vmap <#>/>#< (flip replicate '.', length) <##> NT (Just . runIdentity) <#> show $ stateIntIdentityInt
+-- >>> let stateIntIdentityString = nmap                                                                   <#> show $ stateIntIdentityInt
+-- >>> let stateIntMaybeString    = nmap                                      <##> NT (Just . runIdentity) <#> show $ stateIntIdentityInt
+-- >>> let stateStringMaybeString = nmap <#>/>#< (flip replicate '.', length) <##> NT (Just . runIdentity) <#> show $ stateIntIdentityInt
 -- >>> runStateT stateIntIdentityInt 4
 -- Identity (2,4)
 -- >>> runStateT stateIntIdentityString 4
@@ -416,17 +416,17 @@ instance VFunctor (ReaderT :: * -> (* -> *) -> * -> *) where
 -- >>> runStateT stateStringMaybeString "four"
 -- Just ("2","....")
 --
--- >>> let stateIntIdentityInt'      = vmap                                                                           -#- ()   $ stateIntIdentityInt
--- >>> let stateIntMaybeInt          = vmap                                              <##> NT (Just . runIdentity) -#- ()   $ stateIntIdentityInt
--- >>> let stateIntIdentityString    = vmap                                              -#-  ()                      <#> show $ stateIntIdentityInt
--- >>> let stateIntIdentityInt''     = vmap                                              -#-  ()                      -#- ()   $ stateIntIdentityInt
--- >>> let stateStringMaybeInt       = vmap <#>/>#< (flip replicate '.', length) <##> NT (Just . runIdentity) -#- ()   $ stateIntIdentityInt
--- >>> let stateStringIdentityString = vmap <#>/>#< (flip replicate '.', length) -#-  ()                      <#> show $ stateIntIdentityInt
--- >>> let stateStringIdentityInt    = vmap <#>/>#< (flip replicate '.', length) -#-  ()                      -#- ()   $ stateIntIdentityInt
--- >>> let stateIntMaybeString       = vmap -#-     ()                           <##> NT (Just . runIdentity) <#> show $ stateIntIdentityInt
--- >>> let stateIntMaybeInt'         = vmap -#-     ()                           <##> NT (Just . runIdentity) -#- ()   $ stateIntIdentityInt
--- >>> let stateIntIdentityString'   = vmap -#-     ()                           -#-  ()                      <#> show $ stateIntIdentityInt
--- >>> let stateIntIdentityInt'''    = vmap -#-     ()                           -#-  ()                      -#- ()   $ stateIntIdentityInt
+-- >>> let stateIntIdentityInt'      = nmap                                                                           -#- ()   $ stateIntIdentityInt
+-- >>> let stateIntMaybeInt          = nmap                                              <##> NT (Just . runIdentity) -#- ()   $ stateIntIdentityInt
+-- >>> let stateIntIdentityString    = nmap                                              -#-  ()                      <#> show $ stateIntIdentityInt
+-- >>> let stateIntIdentityInt''     = nmap                                              -#-  ()                      -#- ()   $ stateIntIdentityInt
+-- >>> let stateStringMaybeInt       = nmap <#>/>#< (flip replicate '.', length) <##> NT (Just . runIdentity) -#- ()   $ stateIntIdentityInt
+-- >>> let stateStringIdentityString = nmap <#>/>#< (flip replicate '.', length) -#-  ()                      <#> show $ stateIntIdentityInt
+-- >>> let stateStringIdentityInt    = nmap <#>/>#< (flip replicate '.', length) -#-  ()                      -#- ()   $ stateIntIdentityInt
+-- >>> let stateIntMaybeString       = nmap -#-     ()                           <##> NT (Just . runIdentity) <#> show $ stateIntIdentityInt
+-- >>> let stateIntMaybeInt'         = nmap -#-     ()                           <##> NT (Just . runIdentity) -#- ()   $ stateIntIdentityInt
+-- >>> let stateIntIdentityString'   = nmap -#-     ()                           -#-  ()                      <#> show $ stateIntIdentityInt
+-- >>> let stateIntIdentityInt'''    = nmap -#-     ()                           -#-  ()                      -#- ()   $ stateIntIdentityInt
 -- >>> runStateT stateIntIdentityInt' 4
 -- Identity (2,4)
 -- >>> runStateT stateIntMaybeInt 4
@@ -449,9 +449,9 @@ instance VFunctor (ReaderT :: * -> (* -> *) -> * -> *) where
 -- Identity ("2",4)
 -- >>> runStateT stateIntIdentityInt''' 4
 -- Identity (2,4)
-instance VFunctor StateT where
-  type VMap StateT = InvariantT (Covariant1T (CovariantT (->)))
-  vmap = InvariantT $ \(f1, f1')
+instance NFunctor StateT where
+  type Variance StateT = InvariantT (Covariant1T (CovariantT (->)))
+  nmap = InvariantT $ \(f1, f1')
       -> Covariant1T $ \f2
       -> CovariantT $ \f3
       -> \body
@@ -460,9 +460,9 @@ instance VFunctor StateT where
 
 -- |
 -- >>> let writerIntIdentityInt    = do {tell [4]; lift $ Identity 2}
--- >>> let writerIntIdentityString = vmap                                       <#> show $ writerIntIdentityInt
--- >>> let writerIntMaybeString    = vmap          <##> NT (Just . runIdentity) <#> show $ writerIntIdentityInt
--- >>> let writerStringMaybeString = vmap <#> show <##> NT (Just . runIdentity) <#> show $ writerIntIdentityInt
+-- >>> let writerIntIdentityString = nmap                                       <#> show $ writerIntIdentityInt
+-- >>> let writerIntMaybeString    = nmap          <##> NT (Just . runIdentity) <#> show $ writerIntIdentityInt
+-- >>> let writerStringMaybeString = nmap <#> show <##> NT (Just . runIdentity) <#> show $ writerIntIdentityInt
 -- >>> runWriterT writerIntIdentityInt
 -- Identity (2,[4])
 -- >>> runWriterT writerIntIdentityString
@@ -472,17 +472,17 @@ instance VFunctor StateT where
 -- >>> runWriterT writerStringMaybeString
 -- Just ("2","[4]")
 --
--- >>> let writerIntIdentityInt'      = vmap                                                                    -#- ()   $ writerIntIdentityInt
--- >>> let writerIntMaybeInt          = vmap                                       <##> NT (Just . runIdentity) -#- ()   $ writerIntIdentityInt
--- >>> let writerIntIdentityString    = vmap                                       -#-  ()                      <#> show $ writerIntIdentityInt
--- >>> let writerIntIdentityInt''     = vmap                                       -#-  ()                      -#- ()   $ writerIntIdentityInt
--- >>> let writerStringMaybeInt       = vmap <#> show <##> NT (Just . runIdentity) -#- ()   $ writerIntIdentityInt
--- >>> let writerStringIdentityString = vmap <#> show -#-  ()                      <#> show $ writerIntIdentityInt
--- >>> let writerStringIdentityInt    = vmap <#> show -#-  ()                      -#- ()   $ writerIntIdentityInt
--- >>> let writerIntMaybeString       = vmap -#- ()   <##> NT (Just . runIdentity) <#> show $ writerIntIdentityInt
--- >>> let writerIntMaybeInt'         = vmap -#- ()   <##> NT (Just . runIdentity) -#- ()   $ writerIntIdentityInt
--- >>> let writerIntIdentityString'   = vmap -#- ()   -#-  ()                      <#> show $ writerIntIdentityInt
--- >>> let writerIntIdentityInt'''    = vmap -#- ()   -#-  ()                      -#- ()   $ writerIntIdentityInt
+-- >>> let writerIntIdentityInt'      = nmap                                                                    -#- ()   $ writerIntIdentityInt
+-- >>> let writerIntMaybeInt          = nmap                                       <##> NT (Just . runIdentity) -#- ()   $ writerIntIdentityInt
+-- >>> let writerIntIdentityString    = nmap                                       -#-  ()                      <#> show $ writerIntIdentityInt
+-- >>> let writerIntIdentityInt''     = nmap                                       -#-  ()                      -#- ()   $ writerIntIdentityInt
+-- >>> let writerStringMaybeInt       = nmap <#> show <##> NT (Just . runIdentity) -#- ()   $ writerIntIdentityInt
+-- >>> let writerStringIdentityString = nmap <#> show -#-  ()                      <#> show $ writerIntIdentityInt
+-- >>> let writerStringIdentityInt    = nmap <#> show -#-  ()                      -#- ()   $ writerIntIdentityInt
+-- >>> let writerIntMaybeString       = nmap -#- ()   <##> NT (Just . runIdentity) <#> show $ writerIntIdentityInt
+-- >>> let writerIntMaybeInt'         = nmap -#- ()   <##> NT (Just . runIdentity) -#- ()   $ writerIntIdentityInt
+-- >>> let writerIntIdentityString'   = nmap -#- ()   -#-  ()                      <#> show $ writerIntIdentityInt
+-- >>> let writerIntIdentityInt'''    = nmap -#- ()   -#-  ()                      -#- ()   $ writerIntIdentityInt
 -- >>> runWriterT writerIntIdentityInt'
 -- Identity (2,[4])
 -- >>> runWriterT writerIntMaybeInt
@@ -505,9 +505,9 @@ instance VFunctor StateT where
 -- Identity ("2",[4])
 -- >>> runWriterT writerIntIdentityInt'''
 -- Identity (2,[4])
-instance VFunctor WriterT where
-  type VMap WriterT = CovariantT (Covariant1T (CovariantT (->)))
-  vmap = CovariantT $ \f1
+instance NFunctor WriterT where
+  type Variance WriterT = CovariantT (Covariant1T (CovariantT (->)))
+  nmap = CovariantT $ \f1
       -> Covariant1T $ \f2
       -> CovariantT $ \f3
       -> \body
@@ -516,49 +516,49 @@ instance VFunctor WriterT where
 
 
 -- |
--- For kind @*@, 'vmap' must be the identity function. If 'Bifunctor' and
+-- For kind @*@, 'nmap' must be the identity function. If 'Bifunctor' and
 -- 'Functor' correspond to binary and unary functors, this corresponds to a
 -- "nullary" functor.
 --
--- >>> vmap ()
+-- >>> nmap ()
 -- ()
-instance VFunctor () where
-  type VMap () = (->)
-  vmap = id
+instance NFunctor () where
+  type Variance () = (->)
+  nmap = id
 
-instance VFunctor Identity where
-  type VMap Identity = CovariantT (->)
-  vmap = CovariantT $ \f1
+instance NFunctor Identity where
+  type Variance Identity = CovariantT (->)
+  nmap = CovariantT $ \f1
       -> \(Identity x1)
       -> Identity (f1 x1)
 
-instance VFunctor (,) where
-  type VMap (,) = CovariantT (CovariantT (->))
-  vmap = CovariantT $ \f1
+instance NFunctor (,) where
+  type Variance (,) = CovariantT (CovariantT (->))
+  nmap = CovariantT $ \f1
       -> CovariantT $ \f2
       -> \(x1,x2)
       -> (f1 x1, f2 x2)
 
-instance VFunctor (,,) where
-  type VMap (,,) = CovariantT (CovariantT (CovariantT (->)))
-  vmap = CovariantT $ \f1
+instance NFunctor (,,) where
+  type Variance (,,) = CovariantT (CovariantT (CovariantT (->)))
+  nmap = CovariantT $ \f1
       -> CovariantT $ \f2
       -> CovariantT $ \f3
       -> \(x1,x2,x3)
       -> (f1 x1, f2 x2, f3 x3)
 
-instance VFunctor (,,,) where
-  type VMap (,,,) = CovariantT (CovariantT (CovariantT (CovariantT (->))))
-  vmap = CovariantT $ \f1
+instance NFunctor (,,,) where
+  type Variance (,,,) = CovariantT (CovariantT (CovariantT (CovariantT (->))))
+  nmap = CovariantT $ \f1
       -> CovariantT $ \f2
       -> CovariantT $ \f3
       -> CovariantT $ \f4
       -> \(x1,x2,x3,x4)
       -> (f1 x1, f2 x2, f3 x3, f4 x4)
 
-instance VFunctor (,,,,) where
-  type VMap (,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->)))))
-  vmap = CovariantT $ \f1
+instance NFunctor (,,,,) where
+  type Variance (,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->)))))
+  nmap = CovariantT $ \f1
       -> CovariantT $ \f2
       -> CovariantT $ \f3
       -> CovariantT $ \f4
@@ -566,9 +566,9 @@ instance VFunctor (,,,,) where
       -> \(x1,x2,x3,x4,x5)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5)
 
-instance VFunctor (,,,,,) where
-  type VMap (,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->))))))
-  vmap = CovariantT $ \f1
+instance NFunctor (,,,,,) where
+  type Variance (,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->))))))
+  nmap = CovariantT $ \f1
       -> CovariantT $ \f2
       -> CovariantT $ \f3
       -> CovariantT $ \f4
@@ -577,9 +577,9 @@ instance VFunctor (,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6)
 
-instance VFunctor (,,,,,,) where
-  type VMap (,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->)))))))
-  vmap = CovariantT $ \f1
+instance NFunctor (,,,,,,) where
+  type Variance (,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->)))))))
+  nmap = CovariantT $ \f1
       -> CovariantT $ \f2
       -> CovariantT $ \f3
       -> CovariantT $ \f4
@@ -589,9 +589,9 @@ instance VFunctor (,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7)
 
-instance VFunctor (,,,,,,,) where
-  type VMap (,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->))))))))
-  vmap = CovariantT $ \f1
+instance NFunctor (,,,,,,,) where
+  type Variance (,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->))))))))
+  nmap = CovariantT $ \f1
       -> CovariantT $ \f2
       -> CovariantT $ \f3
       -> CovariantT $ \f4
@@ -602,9 +602,9 @@ instance VFunctor (,,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7,x8)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8)
 
-instance VFunctor (,,,,,,,,) where
-  type VMap (,,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->)))))))))
-  vmap = CovariantT $ \f1
+instance NFunctor (,,,,,,,,) where
+  type Variance (,,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->)))))))))
+  nmap = CovariantT $ \f1
       -> CovariantT $ \f2
       -> CovariantT $ \f3
       -> CovariantT $ \f4
@@ -616,9 +616,9 @@ instance VFunctor (,,,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9)
 
-instance VFunctor (,,,,,,,,,) where
-  type VMap (,,,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->))))))))))
-  vmap = CovariantT $ \f1
+instance NFunctor (,,,,,,,,,) where
+  type Variance (,,,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->))))))))))
+  nmap = CovariantT $ \f1
       -> CovariantT $ \f2
       -> CovariantT $ \f3
       -> CovariantT $ \f4
@@ -631,9 +631,9 @@ instance VFunctor (,,,,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10)
 
-instance VFunctor (,,,,,,,,,,) where
-  type VMap (,,,,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->)))))))))))
-  vmap = CovariantT $ \f1
+instance NFunctor (,,,,,,,,,,) where
+  type Variance (,,,,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->)))))))))))
+  nmap = CovariantT $ \f1
       -> CovariantT $ \f2
       -> CovariantT $ \f3
       -> CovariantT $ \f4
@@ -647,9 +647,9 @@ instance VFunctor (,,,,,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10, f11 x11)
 
-instance VFunctor (,,,,,,,,,,,) where
-  type VMap (,,,,,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->))))))))))))
-  vmap = CovariantT $ \f1
+instance NFunctor (,,,,,,,,,,,) where
+  type Variance (,,,,,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->))))))))))))
+  nmap = CovariantT $ \f1
       -> CovariantT $ \f2
       -> CovariantT $ \f3
       -> CovariantT $ \f4
@@ -664,9 +664,9 @@ instance VFunctor (,,,,,,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10, f11 x11, f12 x12)
 
-instance VFunctor (,,,,,,,,,,,,) where
-  type VMap (,,,,,,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->)))))))))))))
-  vmap = CovariantT $ \f1
+instance NFunctor (,,,,,,,,,,,,) where
+  type Variance (,,,,,,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->)))))))))))))
+  nmap = CovariantT $ \f1
       -> CovariantT $ \f2
       -> CovariantT $ \f3
       -> CovariantT $ \f4
@@ -682,9 +682,9 @@ instance VFunctor (,,,,,,,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10, f11 x11, f12 x12, f13 x13)
 
-instance VFunctor (,,,,,,,,,,,,,) where
-  type VMap (,,,,,,,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->))))))))))))))
-  vmap = CovariantT $ \f1
+instance NFunctor (,,,,,,,,,,,,,) where
+  type Variance (,,,,,,,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->))))))))))))))
+  nmap = CovariantT $ \f1
       -> CovariantT $ \f2
       -> CovariantT $ \f3
       -> CovariantT $ \f4
@@ -701,9 +701,9 @@ instance VFunctor (,,,,,,,,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10, f11 x11, f12 x12, f13 x13, f14 x14)
 
-instance VFunctor (,,,,,,,,,,,,,,) where
-  type VMap (,,,,,,,,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->)))))))))))))))
-  vmap = CovariantT $ \f1
+instance NFunctor (,,,,,,,,,,,,,,) where
+  type Variance (,,,,,,,,,,,,,,) = CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (CovariantT (->)))))))))))))))
+  nmap = CovariantT $ \f1
       -> CovariantT $ \f2
       -> CovariantT $ \f3
       -> CovariantT $ \f4
@@ -721,4 +721,4 @@ instance VFunctor (,,,,,,,,,,,,,,) where
       -> \(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15)
       -> (f1 x1, f2 x2, f3 x3, f4 x4, f5 x5, f6 x6, f7 x7, f8 x8, f9 x9, f10 x10, f11 x11, f12 x12, f13 x13, f14 x14, f15 x15)
 
--- 16-tuples don't even have a Show instance, so we don't bother with an VFunctor instance either
+-- 16-tuples don't even have a Show instance, so we don't bother with an NFunctor instance either
