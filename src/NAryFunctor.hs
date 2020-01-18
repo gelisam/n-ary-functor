@@ -308,14 +308,14 @@ instance ( NFunctor f
          )
       => NFunctor (f a) where
   --type VarianceStack (f a) = inner
-  type VarianceStack (f a) = VarianceTransformer'Inner (VarianceStack f)
+  type VarianceStack (f a) = VarianceStack'Tail (VarianceStack f)
   nmap = nmap -#- ()
 
 -- We can't write @type VarianceStack (f a) = inner@, ghc complains that 'inner' is not
 -- in scope, so we instead have to write this type family which extracts 'inner'
 -- from @VarianceStack f@.
-type family VarianceTransformer'Inner f where
-  VarianceTransformer'Inner (t inner) = inner
+type family VarianceStack'Tail f where
+  VarianceStack'Tail (t inner) = inner
 
 
 
