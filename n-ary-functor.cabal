@@ -13,6 +13,7 @@ extra-source-files:  README.md
                    , CHANGELOG.md
 
 library
+  ghc-options:         -Wall
   exposed-modules:     NAryFunctor
   build-depends:       base >=4.9 && <5
                      , natural-transformation
