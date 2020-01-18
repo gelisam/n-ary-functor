@@ -5,11 +5,10 @@ import Control.Arrow
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Writer
+import Control.Natural
 import Data.Bifunctor
 import Data.Functor.Const
 import Data.Functor.Identity
-
-import NAryFunctor.NT
 
 -- $setup
 -- >>> import Control.Monad.Trans.Class
@@ -95,7 +94,7 @@ import NAryFunctor.NT
 -- >       -> CovariantT $ \f3
 -- >       -> \body
 -- >       -> StateT $ \s'
--- >       -> fmap (f3 *** f1) $ runNT f2 $ runStateT body $ f1' s'
+-- >       -> fmap (f3 *** f1) $ unwrapNT f2 $ runStateT body $ f1' s'
 --
 -- 'StateT' has three type parameters, 's', 'm', and 'a'. We will thus need to
 -- compose three variance transformers. Since a 'StateT' computation both
@@ -125,7 +124,7 @@ import NAryFunctor.NT
 -- >
 -- > (<##>) :: (Functor m, Functor n)
 -- >        => Covariant1T (CovariantT (->)) (StateT s) (StateT t)
--- >        -> NT m n
+-- >        -> m :~> n
 -- >        -> CovariantT (->) (StateT s m) (StateT t n)
 -- >
 -- > (<#>) :: CovariantT (->) (StateT s m) (StateT t n)
@@ -260,7 +259,7 @@ instance VarianceTransformer PhantomvariantT a where
 
 newtype Covariant1T to f f' = Covariant1T
   { (<##>) :: forall m m'. (Functor m, Functor m')
-           => NT m m'
+           => m :~> m'
            -> f m `to` f' m'
   }
 
@@ -271,7 +270,7 @@ instance Functor m
 
 newtype Contravariant1T to f f' = Contravariant1T
   { (>##<) :: forall m m'. (Functor m, Functor m')
-           => NT m' m
+           => m' :~> m
            -> f m `to` f' m'
   }
 
@@ -282,7 +281,7 @@ instance Functor m
 
 newtype Invariant1T to f f' = Invariant1T
   { (<##>/>##<) :: forall m m'. (Functor m, Functor m')
-                => (NT m m', NT m' m)
+                => (m :~> m', m' :~> m)
                 -> f m `to` f' m'
   }
 
@@ -372,13 +371,6 @@ instance NFunctor (->) where
       -> \g
       -> f2 . g . f1'
 
-instance NFunctor NT where
-  type VarianceStack NT = Contravariant1T (Covariant1T (->))
-  nmap = Contravariant1T $ \(NT f1')
-      -> Covariant1T $ \(NT f2)
-      -> \(NT g)
-      -> NT (f2 . g . f1')
-
 -- |
 -- >>> let readerIntIdentityInt    = ((`div` 2) <$> ask) >>= lift . Identity
 -- >>> let readerIntIdentityString = nmap                                         <#> show $ readerIntIdentityInt
@@ -433,7 +425,7 @@ instance NFunctor (ReaderT :: * -> (* -> *) -> * -> *) where
       -> CovariantT $ \f3
       -> \body
       -> ReaderT $ \r'
-      -> fmap f3 $ runNT f2 $ runReaderT body $ f1' r'
+      -> fmap f3 $ unwrapNT f2 $ runReaderT body $ f1' r'
 
 -- |
 -- >>> let stateIntIdentityInt    = ((`div` 2) <$> get) >>= lift . Identity
@@ -489,7 +481,7 @@ instance NFunctor StateT where
       -> CovariantT $ \f3
       -> \body
       -> StateT $ \s'
-      -> fmap (f3 *** f1) $ runNT f2 $ runStateT body $ f1' s'
+      -> fmap (f3 *** f1) $ unwrapNT f2 $ runStateT body $ f1' s'
 
 -- |
 -- >>> let writerIntIdentityInt    = do {tell [4]; lift $ Identity 2}
@@ -545,7 +537,7 @@ instance NFunctor WriterT where
       -> CovariantT $ \f3
       -> \body
       -> WriterT
-       $ fmap (f3 *** f1) $ runNT f2 $ runWriterT body
+       $ fmap (f3 *** f1) $ unwrapNT f2 $ runWriterT body
 
 -- |
 -- >>> let myConst = Const "foo" :: Const String Double
