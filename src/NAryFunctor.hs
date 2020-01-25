@@ -1,5 +1,13 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, PolyKinds, RankNTypes, TypeFamilies, TypeOperators, UndecidableInstances, UnicodeSyntax #-}
-module NAryFunctor where
+module NAryFunctor
+  ( NFunctor(..)
+  , VarianceTransformer(..)
+  , CovariantT(..),     Covariant1T(..)
+  , ContravariantT(..), Contravariant1T(..)
+  , InvariantT(..),     Invariant1T(..)
+  , NonvariantT(..)
+  , PhantomvariantT(..)
+  ) where
 
 import Control.Arrow
 import Control.Monad.Trans.Reader
@@ -44,13 +52,13 @@ import Data.Functor.Identity
 -- Note that it is /not/ possible to write an instance for a partially-applied
 -- type; for example, it is not possible to write an @NFunctor ((,,) a)@
 -- instance corresponding to the @Functor ((,,) a)@ instance. Instead, the
--- @NFunctor ((,,) a)@ and @NFunctor (,,) a b@ instances are derived from the
+-- @NFunctor ((,,) a)@ and @NFunctor ((,,) a b)@ instances are derived from the
 -- above instance.
 --
 -- Laws:
 --
 -- > nmap <#>     id       = nmap -#- () = id
--- > nmap >#<     id       = nmap -#- () = id
+-- > nmap     >#< id       = nmap -#- () = id
 -- > nmap <#>/>#< (id, id) = nmap -#- () = id
 -- > ...
 --
@@ -59,7 +67,7 @@ import Data.Functor.Identity
 -- > nmap               <#> f
 --
 -- > (nmap <#> f1 <#> f2) . (nmap <#> g1 <#> g2) = nmap <#> (f1 . g1) <#> (f2 . g2)
--- > (nmap >#< f1 >#< f2) . (nmap >#< g1 >#< g2) = nmap <#> (g1 . f1) <#> (g2 . f2)
+-- > (nmap >#< f1 >#< f2) . (nmap >#< g1 >#< g2) = nmap >#< (g1 . f1) >#< (g2 . f2)
 -- > ...
 class NFunctor (f :: k) where
   type VarianceStack f :: k -> k -> *
@@ -84,7 +92,7 @@ class NFunctor (f :: k) where
 -- given type parameter, there is always an identity-like argument which can be
 -- passed as that second argument which will cause that type parameter to be
 -- left unchanged. It takes a stack on the left, and its second argument is
--- simply '()'.
+-- simply @()@.
 class VarianceTransformer (t :: (k -> k -> *)
                              -> (k1 -> k) -> (k1 -> k) -> *)
                           (a :: k1)
@@ -135,6 +143,11 @@ instance VarianceTransformer NonvariantT a where
   t -#- () = unNonvariant t
 
 
+-- |
+-- Phantom type parameters can be changed to any other type, no @a -> b@
+-- function needed, so we only ask for a @()@. Use @(-\#-)@ in the common case
+-- in which you don't want to change the phantom type, and @(👻#👻)@ in the
+-- rare case in which you do want to change it.
 newtype PhantomvariantT to f f' = PhantomvariantT
   { (👻#👻) :: forall a a'
              . ()
@@ -187,7 +200,7 @@ instance Functor m
 -- instance?
 --
 -- I claim that you will never have to write such an instance; it will always
--- be possible to write th @NFunctor (->)@ instance instead, and to have the
+-- be possible to write the @NFunctor (->)@ instance instead, and to have the
 -- @NFunctor ((->) a)@ derived from the @NFunctor (->)@ instance via this bold
 -- instance. If you really can't find a way to map over a type parameter, use
 -- 'NonvariantT' to skip over it.
@@ -210,7 +223,7 @@ type family VarianceStack'Tail f where
 
 -- Instances
 
--- |
+-- $
 -- >>> nmap          <#> (+2) $ Right (0::Int)
 -- Right 2
 -- >>> nmap <#> (+1) <#> (+2) $ Left (0::Int)
@@ -230,7 +243,7 @@ instance NFunctor Either where
       -> CovariantT $ \f2
       -> bimap f1 f2
 
--- |
+-- $
 -- >>> let intToInt       =                            succ
 -- >>> let intToString    = nmap            <#> show $ succ
 -- >>> let stringToString = nmap >#< length <#> show $ succ
@@ -260,7 +273,7 @@ instance NFunctor (->) where
       -> \g
       -> f2 . g . f1'
 
--- |
+-- $
 -- >>> let readerIntIdentityInt    = ((`div` 2) <$> ask) >>= lift . Identity
 -- >>> let readerIntIdentityString = nmap                                         <#> show $ readerIntIdentityInt
 -- >>> let readerIntMaybeString    = nmap            <##> NT (Just . runIdentity) <#> show $ readerIntIdentityInt
@@ -316,7 +329,7 @@ instance NFunctor (ReaderT :: * -> (* -> *) -> * -> *) where
       -> ReaderT $ \r'
       -> fmap f3 $ unwrapNT f2 $ runReaderT body $ f1' r'
 
--- |
+-- $
 -- >>> let stateIntIdentityInt    = ((`div` 2) <$> get) >>= lift . Identity
 -- >>> let stateIntIdentityString = nmap                                                                   <#> show $ stateIntIdentityInt
 -- >>> let stateIntMaybeString    = nmap                                      <##> NT (Just . runIdentity) <#> show $ stateIntIdentityInt
@@ -372,7 +385,7 @@ instance NFunctor StateT where
       -> StateT $ \s'
       -> fmap (f3 *** f1) $ unwrapNT f2 $ runStateT body $ f1' s'
 
--- |
+-- $
 -- >>> let writerIntIdentityInt    = do {tell [4]; lift $ Identity 2}
 -- >>> let writerIntIdentityString = nmap                                       <#> show $ writerIntIdentityInt
 -- >>> let writerIntMaybeString    = nmap          <##> NT (Just . runIdentity) <#> show $ writerIntIdentityInt
@@ -428,7 +441,7 @@ instance NFunctor WriterT where
       -> WriterT
        $ fmap (f3 *** f1) $ unwrapNT f2 $ runWriterT body
 
--- |
+-- $
 -- >>> let myConst = Const "foo" :: Const String Double
 -- >>> (nmap            👻#👻 () $ myConst) <&> length
 -- Const "foo"
