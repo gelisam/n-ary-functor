@@ -22,7 +22,7 @@ library
   ghc-options:         -Wall
   exposed-modules:     NAryFunctor
   build-depends:       base >=4.9 && <5
-                     , natural-transformation
+                     , natural-transformation >= 0.4
                      , transformers -any
   hs-source-dirs:      src
   default-language:    Haskell2010
