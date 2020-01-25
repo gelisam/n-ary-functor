@@ -16,10 +16,7 @@ import Data.Functor.Identity
 
 
 -- |
--- A generalization of 'Functor', 'Bifunctor', 'Trifunctor', etc., but also a
--- generalization of 'Contravariant', 'Invariant', 'Profunctor', and even
--- 'MFunctor'. We can 'nmap' over all three type parameters of 'StateT' even
--- though they have different kinds and different variances.
+-- A generalization of 'Functor', 'Bifunctor', 'Contravariant', 'Profunctor', etc.
 --
 -- * @(NFunctor f, VarianceStack f ~ CovariantT (->)@ is equivalent to @Functor f@.
 -- * @(NFunctor f, VarianceStack f ~ CovariantT (CovariantT (->))@ is equivalent to
@@ -30,27 +27,9 @@ import Data.Functor.Identity
 --   @Invariant f@.
 -- * @(NFunctor f, VarianceStack f ~ ContravariantT (CovariantT (->))@ is equivalent
 --   to @Profunctor f@.
--- * @(NFunctor f, VarianceStack f ~ Covariant1T (->))@ is similar to @MFunctor f@
---   or @Functor1 f@. Different versions of this typeclass put different
---   constraints on the input and output type parameters.
 --
--- Let's look at the generalization of 'Functor' to n-ary functors first.
---
--- Example usage:
---
--- >>> nmap <#> (+1) $ Identity 0
--- Identity 1
---
--- >>> nmap <#> (+1) <#> (+2) $ (0, 0)
--- (1,2)
---
--- >>> nmap <#> (+1) <#> (+2) <#> (+3) $ (0, 0, 0)
--- (1,2,3)
---
--- Laws:
---
--- > nmap <#> id <#> ... <#> id = id
--- > (nmap <#> f1 <#> ... <#> fN) . (nmap <#> g1 <#> ... <#> gN) = nmap <#> (f1 . g1) <#> ... <#> (fN . gN)
+-- The associated type 'VarianceStack' specifies the variance of all the type
+-- parameters using a stack of 'VarianceTransformer's ending with @(->)@.
 --
 -- Example instance:
 --
@@ -62,120 +41,26 @@ import Data.Functor.Identity
 -- >       -> \(x1,x2,x3)
 -- >       -> (f1 x1, f2 x2, f3 x3)
 --
--- The associated type 'VarianceStack' specifies the variance of all the type
--- parameters using a stack of 'VarianceTransformer's ending with @(->)@. When
--- generalizing 'Functor' to an n-ary functor, all the type parameters are
--- covariant, and so we need to compose @n@ copies of the 'CovariantT' variance
--- transformer.
---
--- Let's consider the case @n = 2@. With two copies of 'CovariantT', the type of
--- 'nmap' is @CovariantT (CovariantT (->)) f f@, so when calling 'nmap', we need
--- to unwrap two layers of 'CovariantT'. The unwrapping function is named
--- @(\<\#\>)@, not @runCovariantT@, so the call @(nmap \<\#\> g) \<\#\> h@ is
--- unwrapping the two 'CovariantT' layers in order to produce a value in
--- @(->)@, namely a function of type @f a1 a2 -> f b1 b2@. In those two calls,
--- the type of @(\<\#\>)@ gets specialized as follows:
---
--- > (<#>) :: CovariantT (CovariantT (->)) f f
--- >       -> (a1 -> b1)
--- >       -> CovariantT (->) (f a1) (f b1)
--- >
--- > (<#>) :: CovariantT (->) (f a1) (f b1)
--- >       -> (a2 -> b2)
--- >       -> (->) (f a1 a2) (f a2 b2)
---
--- Next, let's see how this approach allows us to 'nmap' over all three type
--- parameters of 'StateT'. This time, the instance looks like this:
---
--- > instance NFunctor StateT where
--- >   type VarianceStack StateT = InvariantT (Covariant1T (CovariantT (->)))
--- >   nmap = InvariantT $ \(f1, f1')
--- >       -> Covariant1T $ \f2
--- >       -> CovariantT $ \f3
--- >       -> \body
--- >       -> StateT $ \s'
--- >       -> fmap (f3 *** f1) $ unwrapNT f2 $ runStateT body $ f1' s'
---
--- 'StateT' has three type parameters, 's', 'm', and 'a'. We will thus need to
--- compose three variance transformers. Since a 'StateT' computation both
--- receives an 's' and produces an 's', this type parameter is "invariant"; a
--- standard but confusing name which does /not/ mean that the parameter cannot
--- vary, but rather that we need both a function from 's' to 's'' and a
--- function from 's'' back to 's' in order to convert a @StateT s m a@ into a
--- @StateT s' m a@. By contrast, the 'a' type parameter is covariant, because
--- we only need a function from 'a' to 'a'' in order to convert a @StateT s m
--- a@ into a @StateT s m a'@.
---
--- As for the 'm' type parameter, we need a natural transformation @forall x. m
--- x -> m' x@ in order to convert a @StateT s m a@ into a @StateT s m' a@. This
--- is still covariant, but for a type parameter of kind @* -> *@, so we follow the
--- [convention](http://hackage.haskell.org/package/base-4.11.1.0/docs/Data-Functor-Classes.html)
--- and add a @1@ to the name of the variance transformer. To 'nmap' over all
--- three type parameters, the three variance transformers we must combine are
--- thus 'InvariantT', 'Covariant1T', and 'CovariantT', and so @StateT@'s
--- 'VarianceStack' is @InvariantT (Covariant1T (CovariantT (->)))@.
--- Each of these is unwrapped via a different infix operator:
--- @nmap \<\#\>/\>\#\< (f1,f1') \<\#\#\> f2 \<\#\> f3@, whose types get
--- specialized as follows:
---
--- > (<#>/>#<) :: InvariantT (Covariant1T (CovariantT (->))) StateT StateT
--- >           -> (s -> t, t -> s)
--- >           -> Covariant1T (CovariantT (->)) (StateT s) (StateT t)
--- >
--- > (<##>) :: (Functor m, Functor n)
--- >        => Covariant1T (CovariantT (->)) (StateT s) (StateT t)
--- >        -> m :~> n
--- >        -> CovariantT (->) (StateT s m) (StateT t n)
--- >
--- > (<#>) :: CovariantT (->) (StateT s m) (StateT t n)
--- >       -> (a -> b)
--- >       -> StateT s m a -> StateT t n b
---
--- Since 'nmap' can have so many different types, it's a bit hard to state the
--- laws in general, but it's the obvious ones: using 'id' everywhere yields
--- 'id', and two composed 'nmap's is equivalent to a single 'nmap' in which the
--- functions are composed; covariantly or contravariantly, as appropriate. For
--- example, the laws for @StateT@'s 'nmap' are:
---
--- > nmap <#>/>#< (id,id) <##> id <#> id = id
--- > (nmap <#>/>#< (f1,f1') <##> f2 <#> f3) . (nmap <#>/>#< (g1,g1') <##> g2 <#> g3) = nmap <#>/>#< (f1 . g1, g1' . f1') <##> (f2 . g2) <#> (f3 . g3)
---
 -- Note that it is /not/ possible to write an instance for a partially-applied
--- type; for example, it is not possible to write an @NFunctor ((,) a)@
--- instance corresponding to the @Functor ((,) a)@ instance. If there are some
--- type parameters which cannot be mapped, simply use 'NonvariantT' to leave
--- them untouched. Here is what the @(,)@ instance would look like if we did
--- not know how to map its first type parameter.
+-- type; for example, it is not possible to write an @NFunctor ((,,) a)@
+-- instance corresponding to the @Functor ((,,) a)@ instance. Instead, the
+-- @NFunctor ((,,) a)@ and @NFunctor (,,) a b@ instances are derived from the
+-- above instance.
 --
--- > instance NFunctor (,) where
--- >   type VarianceStack (,) = NonvariantT (CovariantT (->))
--- >   nmap = NonvariantT
--- >        $ CovariantT$ \f2
--- >        $ \(x1, x2)
--- >       -> (x1, f2 x2)
+-- Laws:
 --
--- The infix unwrapping function for 'NonvariantT' type parameters is '-#-':
+-- > nmap <#>     id       = nmap -#- () = id
+-- > nmap >#<     id       = nmap -#- () = id
+-- > nmap <#>/>#< (id, id) = nmap -#- () = id
+-- > ...
 --
--- >>> nmap -#- () <#> (+2) $ (0, 0)
--- (0,2)
+-- > nmap -#- () -#- () <#> f =
+-- > nmap        -#- () <#> f =
+-- > nmap               <#> f
 --
--- In fact, '-#-' can be used to leave any type parameter unchanged.
---
--- >>> nmap -#- () -#- () <#> (+3) -#- () $ (0, 0, 0, 0)
--- (0,0,3,0)
---
--- And the first few @-#- ()@s can be omitted.
---
--- >>> nmap -#- () <#> (+3) -#- () $ (0, 0, 0, 0)
--- (0,0,3,0)
--- >>> nmap <#> (+3) -#- () $ (0, 0, 0, 0)
--- (0,0,3,0)
---
--- That is, by writing a @NFunctor (,)@ instance, you automatically get the
--- instances for @NFunctor ((,) a)@ and @NFunctor (,) a b@ for free. The
--- bold @NFunctor f => NFunctor (f a)@ instance which gives you those instances
--- for free is the reason you can't write an @NFunctor ((->) a)@ instance: it
--- would overlap with our bold instance.
+-- > (nmap <#> f1 <#> f2) . (nmap <#> g1 <#> g2) = nmap <#> (f1 . g1) <#> (f2 . g2)
+-- > (nmap >#< f1 >#< f2) . (nmap >#< g1 >#< g2) = nmap <#> (g1 . f1) <#> (g2 . f2)
+-- > ...
 class NFunctor (f :: k) where
   type VarianceStack f :: k -> k -> *
   nmap :: VarianceStack f f f
@@ -188,17 +73,17 @@ class NFunctor (f :: k) where
 -- the remaining type parameters, until we reach @(->)@, the base of the stack.
 --
 -- Each 'VarianceTransformer' is eliminated by an infix function, such as
--- @(\<\#\>)@. This function takes a stack on the left, and its right argument
+-- @(\<\#\>)@. This function takes a stack on the left, and its second argument
 -- has whatever type is necessary in order to map over the corresponding
 -- type parameter; for covariant type parameters, it will be a function of type
--- @(a1 -> b1)@, for contravariant type parameters, it will be a function of
--- type @(b1 -> a1)@, for invariant type parameters, it will be a pair of
--- functions @(a1 -> b1, b1 -> a2)@, etc.
+-- @(a -> b)@, for contravariant type parameters, it will be a function of
+-- type @(b -> a)@, for invariant type parameters, it will be a pair of
+-- functions @(a -> b, b -> a)@, etc.
 --
--- The @(-#-)@ method witnesses the fact that regardless of the variance of a
+-- The @(-\#-)@ method witnesses the fact that regardless of the variance of a
 -- given type parameter, there is always an identity-like argument which can be
--- passed as the second argument which will cause that type parameter to be
--- left unchanged. It takes a stack on the left, and its right argument is
+-- passed as that second argument which will cause that type parameter to be
+-- left unchanged. It takes a stack on the left, and its second argument is
 -- simply '()'.
 class VarianceTransformer (t :: (k -> k -> *)
                              -> (k1 -> k) -> (k1 -> k) -> *)
@@ -237,6 +122,10 @@ instance VarianceTransformer InvariantT a where
   t -#- () = t <#>/>#< (id, id)
 
 
+-- |
+-- If you can't figure out how to map over a particular type parameter, use
+-- this variance and we'll leave it alone. The corresponding infix operator is
+-- @(-\#-)@.
 newtype NonvariantT to f f' = NonvariantT
   { unNonvariant :: forall a a'. (a ~ a')
                  => f a `to` f' a'
@@ -297,8 +186,8 @@ instance Functor m
 -- to define an @NFunctor ((->) a)@ instance corresponding to the @Functor ((->) a)@
 -- instance?
 --
--- I claim that we will never want to write such an instance; we will always
--- prefer to write the @NFunctor (->)@ instance instead, and to have the
+-- I claim that you will never have to write such an instance; it will always
+-- be possible to write th @NFunctor (->)@ instance instead, and to have the
 -- @NFunctor ((->) a)@ derived from the @NFunctor (->)@ instance via this bold
 -- instance. If you really can't find a way to map over a type parameter, use
 -- 'NonvariantT' to skip over it.
