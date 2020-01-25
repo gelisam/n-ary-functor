@@ -31,7 +31,7 @@ What about [`Contravariant`](https://www.stackage.org/haddock/lts-14.20/base-4.1
 
 As the examples above demonstrate, n-ary-functor has an equivalent for both the `Functor ((->) a)` instance and the `Profunctor (->)` instance. Even better: when writing your own instance, you only need to define an `NFunctor (->)` instance, and the `NFunctor ((->) a)` instance will be derived for you. `NFunctor ((->) a b)` too, but that's less useful since that `nmap` is just the identity function.
 
-That's not all! Consider a type like `StateT s m a`. The last type parameter is covariant, but what about the first two? Well, `s -> m (a, s)` has both positive and negative occurences of `s`, so you need both an `s -> t` and a `t -> s` function in order to turn a `StateT s m a` into a `StateT t m a`. And what about `m`? You need a natural transformation `forall a. m a -> n a`. Yes, n-ary-functor supports that too!
+That's not all! Consider a type like `StateT s m a`. The last type parameter is covariant, but what about the first two? Well, `s -> m (a, s)` has both positive and negative occurences of `s`, so you need both an `s -> t` and a `t -> s` function in order to turn a `StateT s m a` into a `StateT t m a`. And what about `m`? You need a natural transformation `forall a. m a -> n a`. Yes, n-ary-functor supports these too!
 
 ```haskell
 > let stateIntIdentityInt    = ((`div` 2) <$> get) >>= lift . Identity
@@ -46,7 +46,7 @@ Identity (2,4)
 Just ("2","....")
 ```
 
-Notice how even in such a complicated case, no type annotations are needed, as `nmap` is written with type inference in mind.
+Notice how even in such a complicated case, no type annotations are needed, as n-ary-functor is written with type inference in mind.
 
 
 ## Defining your own instance
@@ -70,9 +70,9 @@ Here is a more complicated instance, that of `StateT`:
 ```haskell
 instance NFunctor StateT where
   type VarianceStack StateT = InvariantT (Covariant1T (CovariantT (->)))
-  nmap = InvariantT $ \(f1, f1')
+  nmap = InvariantT  $ \(f1, f1')
       -> Covariant1T $ \f2
-      -> CovariantT $ \f3
+      -> CovariantT  $ \f3
       -> \body
       -> StateT $ \s'
       -> fmap (f3 *** f1) $ unwrapNT f2 $ runStateT body $ f1' s'
@@ -83,7 +83,7 @@ The `s` type parameter is "invariant", a standard but confusing name which does 
 
 ## Defining your own variance transformer
 
-We've seen plenty of strange variances already and n-ary-functor provides stranger ones still (can you guess what `👻#👻` does?), but if your type parameters vary in an even more unusual way, you can define your own variance transformer. Here's what the definition of `CovariantT` looks like:
+We've seen plenty of strange variances already and n-ary-functor provides stranger ones still (can you guess what the `👻#👻` operator does?), but if your type parameters vary in an even more unusual way, you can define your own variance transformer. Here's what the definition of `CovariantT` looks like:
 
 ```haskell
 newtype CovariantT to f g = CovariantT
@@ -95,7 +95,7 @@ newtype CovariantT to f g = CovariantT
 
 One thing which is unusual in that newtype definition is that instead of naming the eliminator `unCovariantT`, we give it the infix name `(<#>)`. See [this blog post](http://gelisam.blogspot.com/2017/12/n-ary-functors.html#ergonomics) for more details on that aspect.
 
-Let's look at the type wrapped by the newtype. `to` is the rest of the variance stack, so in the simplest case, `to` is just `(->)`, in which case the wrapped type is `(a -> b) -> f a -> g b`, which is really close to the type of `fmap`. The reason we produce a `g b` instead of an `f b` is because there might be other type parameters which have already been fmapped; for example, in `nmap <#> show <#> show $ (0, 0)`, the overall transformation has type `(,) Int Int -> (,) String String`, so from the point of view of the second `(<#>)`, `f` is `(,) Int` and `g` is `(,) String`.
+Let's look at the type wrapped by the newtype. `to` is the rest of the variance stack, so in the simplest case, `to` is just `(->)`, in which case the wrapped type is `(a -> b) -> f a -> g b`, which is really close to the type of `fmap`. The reason we produce a `g b` instead of an `f b` is because previous type parameters might already be fmapped; for example, in `nmap <#> show <#> show $ (0, 0)`, the overall transformation has type `(,) Int Int -> (,) String String`, so from the point of view of the second `(<#>)`, `f` is `(,) Int` and `g` is `(,) String`.
 
 One last thing is that variance transformers must implement the `VarianceTransformer` typeclass. It simply ensures that there exists a neutral argument, in this case `id`, which doesn't change the type parameter at all.
 
