@@ -1,5 +1,5 @@
 name:                n-ary-functor
-version:             0.1.0.0
+version:             1.0
 synopsis:            An n-ary version of Functor
 description:         A single typeclass for Functor, Bifunctor, Profunctor, etc.
 homepage:            https://github.com/gelisam/n-ary-functor

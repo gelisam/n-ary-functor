@@ -1,4 +1,4 @@
-## Next in 1.0
+## New in 1.0
 
 * Breaking change: all instances now need to specify the variance of all type
   parameters.
@@ -7,16 +7,15 @@
   `a` cannot be mapped.
 * `NFunctor` is now even more general: in addition to generalizing `Functor`,
   `Bifunctor`, `Trifunctor`, etc., it now also generalizes `Contravariant`,
-  `Invariant`, `Profunctor`, and even `MFunctor` aka `Functor1`!
+  `Invariant`, and `Profunctor`!
 * Introducing new infix operators corresponding to each variance. `(<#>)` is
   still used for covariant type parameters, so after updating the instances,
   all the call sites which were using the 0.1 API should still work. `(>#<)` is
   used for contravariant type parameters, `(<#>/>#<)` is used for invariant
   type parameters, which can be mapped given both a covariant and a
   contravariant function, and `(👻#👻)` is used for phantom type parameters.
-* Introducing the `(-#-)` operator, which support, which can be used instead of
-  any other operator in order to leave the corresponding type parameter
-  untouched.
+* Introducing the `(-#-)` operator, which can be used instead of any other
+  operator in order to leave the corresponding type parameter untouched.
 * Introducing support for mapping over type parameters of kind `* -> *` using
   natural transformations. The corresponding infix operators have two hashes:
   the covariant operator is `(<##>)`, the contravariant operator is `(>##<)`,
