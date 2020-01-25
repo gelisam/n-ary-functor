@@ -95,7 +95,7 @@ newtype CovariantT to f g = CovariantT
 
 One thing which is unusual in that newtype definition is that instead of naming the eliminator `unCovariantT`, we give it the infix name `(<#>)`. See [this blog post](http://gelisam.blogspot.com/2017/12/n-ary-functors.html#ergonomics) for more details on that aspect.
 
-Let's look at the type wrapped by the newtype. `to` is the rest of the variance stack, so in the simplest case, `to` is just `(->)`, in which case the wrapped type is `(a -> b) -> f a -> g b`, which is really close to the type of `fmap`. The reason we produce a `g b` instead of an `f b` is because previous type parameters might already be fmapped; for example, in `nmap <#> show <#> show $ (0, 0)`, the overall transformation has type `(,) Int Int -> (,) String String`, so from the point of view of the second `(<#>)`, `f` is `(,) Int` and `g` is `(,) String`.
+Let's look at the type wrapped by the newtype. `to` is the rest of the variance stack, so in the simplest case, `to` is just `(->)`, in which case the wrapped type is `(a -> b) -> f a -> g b`, which is really close to the type of `fmap`. The reason we produce a `g b` instead of an `f b` is because previous type parameters might already be mapped; for example, in `nmap <#> show <#> show $ (0, 0)`, the overall transformation has type `(,) Int Int -> (,) String String`, so from the point of view of the second `(<#>)`, `f` is `(,) Int` and `g` is `(,) String`.
 
 One last thing is that variance transformers must implement the `VarianceTransformer` typeclass. It simply ensures that there exists a neutral argument, in this case `id`, which doesn't change the type parameter at all.
 
