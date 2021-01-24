@@ -1,6 +1,4 @@
 resolver: lts-9.21
 packages:
 - .
-extra-deps:
-- git: git@github.com:karun012/doctest-discover.git
-  commit: f868e7489832605cbd7440f8e3d70091351abe6c
+extra-deps: []
