@@ -22,17 +22,16 @@ source-repository this
    tag: v1.0
 
 custom-setup
- setup-depends:
-   base >= 4 && <5,
-   Cabal,
-   cabal-doctest >= 1 && <1.1
+  setup-depends:       base >= 4.9.1.0
+                     , Cabal >= 1.24.2.0
+                     , cabal-doctest >= 1.0.2
 
 library
   ghc-options:         -Wall
   exposed-modules:     NAryFunctor
-  build-depends:       base >=4.9 && <5
+  build-depends:       base >= 4.9.1.0
                      , natural-transformation >= 0.4
-                     , transformers -any
+                     , transformers >= 0.5.2.0
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -41,7 +40,7 @@ test-suite doctests
   type:               exitcode-stdio-1.0
   ghc-options:        -Wall -threaded
   main-is:            doctests.hs
-  build-depends:      base >4 && <5
-                    , doctest
+  build-depends:      base >= 4.9.1.0
+                    , doctest >= 0.11.4
                     , n-ary-functor
   hs-source-dirs:     test
