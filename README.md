@@ -1,4 +1,4 @@
-# N-ary Functors [![Hackage](https://img.shields.io/hackage/v/n-ary-functor.svg)](https://hackage.haskell.org/package/n-ary-functor) [![Build Status](https://secure.travis-ci.org/gelisam/n-ary-functor.png?branch=master)](https://travis-ci.org/gelisam/n-ary-functor)
+# N-ary Functors [![Hackage](https://img.shields.io/hackage/v/n-ary-functor.svg)](https://hackage.haskell.org/package/n-ary-functor) [![Build Status](https://github.com/gelisam/n-ary-functor/workflows/CI/badge.svg)](https://github.com/gelisam/n-ary-functor/actions)
 
 ## Using existing instances
 
