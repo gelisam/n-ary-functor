@@ -65,7 +65,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: oldest
+          - name: latest
             ghc: latest
             os: ubuntu-latest
 
