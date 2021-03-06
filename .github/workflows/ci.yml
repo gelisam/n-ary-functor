@@ -65,8 +65,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: oldest
+          - name: latest
             ghc: latest
+            cabal: 3.4
             os: ubuntu-latest
 
     steps:
