@@ -67,7 +67,7 @@ jobs:
         include:
           - name: latest
             ghc: latest
-            cabal: latest
+            cabal: 3.4
             os: ubuntu-latest
 
     steps:
